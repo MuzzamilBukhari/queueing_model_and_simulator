@@ -96,30 +96,30 @@ export default function ResultsPanel({ results }: ResultsPanelProps) {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-800 animate-fadeIn">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-800 animate-fadeIn">
+      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
         M/M/1 Queue Simulation Results
       </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {metrics.map((metric) => {
           const Icon = metric.icon;
           return (
             <div
               key={metric.id}
               className={`
-                p-6 rounded-lg border-2 transition-all duration-300
+                p-4 sm:p-6 rounded-lg border-2 transition-all duration-300
                 hover:shadow-md hover:scale-[1.02]
                 ${colorClasses[metric.color as keyof typeof colorClasses]}
               `}
             >
-              <div className="flex items-start justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <div className="flex items-start justify-between mb-2 sm:mb-3">
+                <h3 className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">
                   {metric.title}
                 </h3>
-                <Icon className="w-5 h-5 opacity-70" />
+                <Icon className="w-4 h-4 sm:w-5 sm:h-5 opacity-70 shrink-0" />
               </div>
-              <p className="text-3xl font-bold mb-2">
+              <p className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">
                 {metric.value}
               </p>
               <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">

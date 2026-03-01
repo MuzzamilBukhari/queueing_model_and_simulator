@@ -25,8 +25,8 @@ export default function InputForm({
   const isValid = selectedModel && meanInterarrivalTime && meanServiceTime && parseFloat(meanInterarrivalTime) > 0 && parseFloat(meanServiceTime) > 0;
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-800">
-      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+    <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-800">
+      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
         Input Parameters
       </h2>
 
