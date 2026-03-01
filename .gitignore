@@ -10,6 +10,9 @@ backend/bin/
 backend/obj/
 backend/appsettings.Development.json
 
+# Important: DO NOT ignore Dockerfile or .dockerignore
+# These are needed for Render deployment
+
 # IDE
 .vs/
 .vscode/

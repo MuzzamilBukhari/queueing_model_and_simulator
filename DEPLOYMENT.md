@@ -60,14 +60,21 @@ backend/appsettings.Development.json
 Thumbs.db
 ```
 
-### 1.3 Commit Your Code
+### 1.3 Verify Backend Dockerfile
+
+A `Dockerfile` has been created in the `backend/` directory. This is required for deploying .NET applications on Render. The Docker configuration will:
+- Use .NET 9.0 SDK for building
+- Use .NET 9.0 runtime for deployment
+- Expose port 8080 (Render's default)
+
+### 1.4 Commit Your Code
 
 ```bash
 git add .
 git commit -m "Initial commit for deployment"
 ```
 
-### 1.4 Push to GitHub
+### 1.5 Push to GitHub
 
 ```bash
 # Create a new repository on GitHub (https://github.com/new)
@@ -96,15 +103,10 @@ Fill in the deployment settings:
 - **Region**: Choose the closest to your users
 - **Branch**: `main`
 - **Root Directory**: `backend`
-- **Runtime**: `.NET`
-- **Build Command**: 
-  ```bash
-  dotnet publish -c Release -o out
-  ```
-- **Start Command**: 
-  ```bash
-  cd out && dotnet QueueSimulatorAPI.dll
-  ```
+- **Environment**: Select **"Docker"**
+- **Dockerfile Path**: `Dockerfile` (should be auto-detected)
+
+Leave the Build and Start commands empty - Docker will handle this automatically.
 
 ### 2.3 Environment Variables (if needed)
 
@@ -242,9 +244,10 @@ After updating, commit and push to trigger a new deployment on Render.
 
 ### Backend deployment fails on Render
 
-- Verify the build command is correct
-- Check the start command points to the correct DLL file
+- Verify the Dockerfile is in the `backend/` directory
+- Check that Docker environment is selected in Render
 - Check Render logs for specific errors
+- Verify .NET SDK version in Dockerfile matches your project
 
 ### Application works locally but not in production
 
