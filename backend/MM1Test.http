@@ -1,0 +1,51 @@
+@QueueSimulatorAPI_HostAddress = http://localhost:5196
+
+### Test Root Endpoint
+GET {{QueueSimulatorAPI_HostAddress}}/
+Accept: application/json
+
+###
+
+### Test M/M/1 Calculation - Valid System (ρ < 1)
+POST {{QueueSimulatorAPI_HostAddress}}/api/simulation/mm1
+Content-Type: application/json
+
+{
+  "meanInterarrivalTime": 2.0,
+  "meanServiceTime": 1.5
+}
+
+###
+
+### Test M/M/1 Calculation - Unstable System (ρ >= 1)
+POST {{QueueSimulatorAPI_HostAddress}}/api/simulation/mm1
+Content-Type: application/json
+
+{
+  "meanInterarrivalTime": 1.0,
+  "meanServiceTime": 2.0
+}
+
+###
+
+### Test M/M/1 Calculation - Invalid Input (negative value)
+POST {{QueueSimulatorAPI_HostAddress}}/api/simulation/mm1
+Content-Type: application/json
+
+{
+  "meanInterarrivalTime": -1.0,
+  "meanServiceTime": 1.5
+}
+
+###
+
+### Test M/M/1 Calculation - Example 2
+POST {{QueueSimulatorAPI_HostAddress}}/api/simulation/mm1
+Content-Type: application/json
+
+{
+  "meanInterarrivalTime": 3.0,
+  "meanServiceTime": 2.0
+}
+
+###

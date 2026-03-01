@@ -1,0 +1,6 @@
+@QueueSimulatorAPI_HostAddress = http://localhost:5196
+
+GET {{QueueSimulatorAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
