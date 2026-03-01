@@ -36,7 +36,8 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5196/api/simulation/mm1', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5196';
+      const response = await fetch(`${apiUrl}/api/simulation/mm1`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
