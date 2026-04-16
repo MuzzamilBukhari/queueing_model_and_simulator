@@ -8,24 +8,23 @@ namespace QueueSimulatorAPI.Controllers;
 [Route("api/[controller]")]
 public class SimulationController : ControllerBase
 {
-    private readonly MM1Service _mm1Service;
+    private readonly QueueModelService _queueModelService;
 
-    public SimulationController(MM1Service mm1Service)
+    public SimulationController(QueueModelService queueModelService)
     {
-        _mm1Service = mm1Service;
+        _queueModelService = queueModelService;
     }
 
     /// <summary>
-    /// Calculate M/M/1 queueing model metrics
+    /// Calculate queueing model metrics (manual or auto-detection)
     /// </summary>
-    /// <param name="request">Mean interarrival and service times</param>
-    /// <returns>Queueing metrics (λ, μ, ρ, Lq, Wq, W, L, Idle Probability)</returns>
-    [HttpPost("mm1")]
-    [ProducesResponseType(typeof(MM1Response), StatusCodes.Status200OK)]
+    /// <param name="request">Generic queueing request payload</param>
+    /// <returns>Queueing metrics (rho, L, Lq, W, Wq, optional P0)</returns>
+    [HttpPost("calculate")]
+    [ProducesResponseType(typeof(QueueSimulationResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public IActionResult CalculateMM1([FromBody] MM1Request request)
+    public IActionResult Calculate([FromBody] QueueSimulationRequest request)
     {
-        // Validate model state
         if (!ModelState.IsValid)
         {
             return BadRequest(ModelState);
@@ -33,28 +32,45 @@ public class SimulationController : ControllerBase
 
         try
         {
-            // Calculate M/M/1 metrics
-            var response = _mm1Service.Calculate(
-                request.MeanInterarrivalTime, 
-                request.MeanServiceTime
-            );
-
+            var response = _queueModelService.Calculate(request);
             return Ok(response);
         }
         catch (InvalidOperationException ex)
         {
-            // System unstable (ρ >= 1)
             return BadRequest(new { error = ex.Message });
         }
         catch (ArgumentException ex)
         {
-            // Invalid input parameters
             return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)
         {
-            // Unexpected error
             return StatusCode(500, new { error = "An unexpected error occurred", details = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Backward-compatible endpoint for M/M/1 payload used by existing clients
+    /// </summary>
+    [HttpPost("mm1")]
+    [ProducesResponseType(typeof(QueueSimulationResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public IActionResult CalculateMM1([FromBody] MM1Request request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var genericRequest = new QueueSimulationRequest
+        {
+            Model = "M/M/1",
+            AutoDetectModel = false,
+            MeanInterArrivalTime = request.MeanInterarrivalTime,
+            ServiceTime = request.MeanServiceTime,
+            Servers = 1
+        };
+
+        return Calculate(genericRequest);
     }
 }

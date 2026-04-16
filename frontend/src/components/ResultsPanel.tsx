@@ -1,16 +1,15 @@
 "use client";
 
-import { TrendingUp, Users, Clock, Activity, Coffee } from 'lucide-react';
+import { TrendingUp, Users, Clock, CircleDot } from 'lucide-react';
 
 export interface SimulationResults {
-  lambda: number;     // Arrival rate (λ)
-  mu: number;         // Service rate (μ)
-  rho: number;        // Utilization (ρ)
-  Lq: number;         // Mean number in queue
-  Wq: number;         // Mean wait in queue
-  L: number;          // Mean number in system
-  W: number;          // Mean wait in system
-  idleProbability: number; // Probability server is idle
+  model: string;
+  rho: number;
+  Lq: number;
+  Wq: number;
+  L: number;
+  W: number;
+  P0?: number | null;
 }
 
 interface ResultsPanelProps {
@@ -22,26 +21,10 @@ export default function ResultsPanel({ results }: ResultsPanelProps) {
 
   const metrics = [
     {
-      id: 'lambda',
-      title: 'Arrival Rate (λ)',
-      value: results.lambda.toFixed(4),
-      description: 'Average number of arrivals per time unit',
-      icon: TrendingUp,
-      color: 'blue',
-    },
-    {
-      id: 'mu',
-      title: 'Service Rate (μ)',
-      value: results.mu.toFixed(4),
-      description: 'Average number of services per time unit',
-      icon: Activity,
-      color: 'green',
-    },
-    {
       id: 'rho',
       title: 'Utilization (ρ)',
       value: `${(results.rho * 100).toFixed(2)}%`,
-      description: 'Percentage of time the server is busy',
+      description: 'Traffic intensity',
       icon: TrendingUp,
       color: 'purple',
     },
@@ -77,15 +60,18 @@ export default function ResultsPanel({ results }: ResultsPanelProps) {
       icon: Clock,
       color: 'green',
     },
-    {
-      id: 'idle',
-      title: 'Idle Probability',
-      value: `${(results.idleProbability * 100).toFixed(2)}%`,
-      description: 'Probability that the server is idle',
-      icon: Coffee,
-      color: 'red',
-    },
   ];
+
+  if (typeof results.P0 === 'number') {
+    metrics.push({
+      id: 'p0',
+      title: 'P0 (Idle Probability)',
+      value: `${(results.P0 * 100).toFixed(2)}%`,
+      description: 'Probability that zero customers are in the system',
+      icon: CircleDot,
+      color: 'red',
+    });
+  }
 
   const colorClasses = {
     blue: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800',
@@ -98,7 +84,7 @@ export default function ResultsPanel({ results }: ResultsPanelProps) {
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-800 animate-fadeIn">
       <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
-        M/M/1 Queue Simulation Results
+        {results.model} Queue Simulation Results
       </h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">

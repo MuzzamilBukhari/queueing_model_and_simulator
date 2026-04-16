@@ -4,34 +4,82 @@ import { useState, FormEvent } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { Menu, X } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
-import ModelSelector from '@/components/ModelSelector';
 import InputForm from '@/components/InputForm';
 import ResultsPanel, { SimulationResults } from '@/components/ResultsPanel';
 import ThemeToggle from '@/components/ThemeToggle';
 
+function detectModel(
+  arrivalDistribution: string,
+  serviceDistribution: string,
+  servers: number,
+): string {
+  if (!arrivalDistribution || !serviceDistribution || servers < 1) {
+    return '';
+  }
+
+  const arrival = arrivalDistribution === 'Poisson' ? 'M' : 'G';
+  const service = serviceDistribution === 'Exponential' ? 'M' : 'G';
+
+  if (servers > 1) {
+    return arrival === 'M' && service === 'M' ? 'M/M/s' : '';
+  }
+
+  return `${arrival}/${service}/1`;
+}
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'models' | 'simulator'>('models');
-  const [selectedModel, setSelectedModel] = useState('');
-  const [numberOfServers, setNumberOfServers] = useState(2);
-  const [meanInterarrivalTime, setMeanInterarrivalTime] = useState('');
-  const [meanServiceTime, setMeanServiceTime] = useState('');
+  const [mode, setMode] = useState<'manual' | 'auto'>('manual');
+  const [selectedModel, setSelectedModel] = useState('M/M/1');
+  const [arrivalDistribution, setArrivalDistribution] = useState('Poisson');
+  const [serviceDistribution, setServiceDistribution] = useState('Exponential');
+  const [arrivalInputType, setArrivalInputType] = useState<'rate' | 'meanInterArrival'>('meanInterArrival');
+  const [arrivalValue, setArrivalValue] = useState('');
+  const [serviceTime, setServiceTime] = useState('');
+  const [servers, setServers] = useState(1);
+  const [variance, setVariance] = useState('');
+  const [ca, setCa] = useState('');
+  const [cs, setCs] = useState('');
   const [results, setResults] = useState<SimulationResults | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  const effectiveModel =
+    mode === 'manual'
+      ? selectedModel
+      : detectModel(arrivalDistribution, serviceDistribution, servers);
+
   const runSimulation = async (e: FormEvent) => {
     e.preventDefault();
-    
-    if (!selectedModel || !meanInterarrivalTime || !meanServiceTime) {
+
+    if (!effectiveModel) {
+      toast.error('Current selection does not map to a supported model.');
+      return;
+    }
+
+    if (!arrivalValue || !serviceTime) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    const interarrivalTime = parseFloat(meanInterarrivalTime);
-    const serviceTime = parseFloat(meanServiceTime);
+    const parsedArrival = parseFloat(arrivalValue);
+    const parsedServiceTime = parseFloat(serviceTime);
 
-    if (interarrivalTime <= 0 || serviceTime <= 0) {
-      toast.error('Times must be positive numbers');
+    if (parsedArrival <= 0 || parsedServiceTime <= 0 || servers < 1) {
+      toast.error('Inputs must be positive values');
+      return;
+    }
+
+    if (effectiveModel === 'M/G/1' && (!variance || parseFloat(variance) < 0)) {
+      toast.error('Please provide a valid non-negative service variance for M/G/1.');
+      return;
+    }
+
+    if (
+      effectiveModel === 'G/G/1' &&
+      (!ca || !cs || parseFloat(ca) < 0 || parseFloat(cs) < 0)
+    ) {
+      toast.error('Please provide valid non-negative Ca and Cs values for G/G/1.');
       return;
     }
 
@@ -39,15 +87,31 @@ export default function Home() {
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5196';
-      const response = await fetch(`${apiUrl}/api/simulation/mm1`, {
+
+      const payload: Record<string, unknown> = {
+        autoDetectModel: mode === 'auto',
+        model: mode === 'manual' ? selectedModel : undefined,
+        arrivalDistribution: mode === 'auto' ? arrivalDistribution : undefined,
+        serviceDistribution: mode === 'auto' ? serviceDistribution : undefined,
+        serviceTime: parsedServiceTime,
+        servers,
+        variance: effectiveModel === 'M/G/1' ? parseFloat(variance) : undefined,
+        ca: effectiveModel === 'G/G/1' ? parseFloat(ca) : undefined,
+        cs: effectiveModel === 'G/G/1' ? parseFloat(cs) : undefined,
+      };
+
+      if (arrivalInputType === 'rate') {
+        payload.arrivalRate = parsedArrival;
+      } else {
+        payload.meanInterArrivalTime = parsedArrival;
+      }
+
+      const response = await fetch(`${apiUrl}/api/simulation/calculate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          meanInterarrivalTime: interarrivalTime,
-          meanServiceTime: serviceTime,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -58,17 +122,15 @@ export default function Home() {
       }
 
       const data = await response.json();
-      
-      // Map API response to results format
+
       const apiResults: SimulationResults = {
-        lambda: data.lambda,
-        mu: data.mu,
+        model: data.model,
         rho: data.rho,
         Lq: data.lq,
         Wq: data.wq,
         L: data.l,
         W: data.w,
-        idleProbability: data.idleProbability,
+        P0: data.p0,
       };
 
       setResults(apiResults);
@@ -125,28 +187,34 @@ export default function Home() {
         <div className="p-4 sm:p-6 lg:p-8">
           {activeTab === 'models' ? (
             <div className="max-w-4xl mx-auto space-y-6">
-              {/* Model Selection */}
-              <ModelSelector
+              <InputForm
+                mode={mode}
+                onModeChange={setMode}
                 selectedModel={selectedModel}
-                onModelChange={setSelectedModel}
-                numberOfServers={numberOfServers}
-                onServersChange={setNumberOfServers}
+                onSelectedModelChange={setSelectedModel}
+                arrivalDistribution={arrivalDistribution}
+                serviceDistribution={serviceDistribution}
+                onArrivalDistributionChange={setArrivalDistribution}
+                onServiceDistributionChange={setServiceDistribution}
+                servers={servers}
+                onServersChange={setServers}
+                arrivalInputType={arrivalInputType}
+                onArrivalInputTypeChange={setArrivalInputType}
+                arrivalValue={arrivalValue}
+                onArrivalValueChange={setArrivalValue}
+                serviceTime={serviceTime}
+                onServiceTimeChange={setServiceTime}
+                variance={variance}
+                onVarianceChange={setVariance}
+                ca={ca}
+                cs={cs}
+                onCaChange={setCa}
+                onCsChange={setCs}
+                effectiveModel={effectiveModel}
+                onSubmit={runSimulation}
+                isLoading={isLoading}
               />
 
-              {/* Input Form */}
-              {selectedModel && (
-                <InputForm
-                  meanInterarrivalTime={meanInterarrivalTime}
-                  meanServiceTime={meanServiceTime}
-                  onMeanInterarrivalTimeChange={setMeanInterarrivalTime}
-                  onMeanServiceTimeChange={setMeanServiceTime}
-                  onSubmit={runSimulation}
-                  isLoading={isLoading}
-                  selectedModel={selectedModel}
-                />
-              )}
-
-              {/* Results Panel */}
               {results && <ResultsPanel results={results} />}
             </div>
           ) : (

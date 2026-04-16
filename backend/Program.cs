@@ -9,6 +9,7 @@ builder.Services.AddSwaggerGen();
 
 // Register application services
 builder.Services.AddScoped<MM1Service>();
+builder.Services.AddScoped<QueueModelService>();
 
 // Add CORS for development
 builder.Services.AddCors(options =>
