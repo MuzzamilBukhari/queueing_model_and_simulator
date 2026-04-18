@@ -7,14 +7,15 @@ public class QueueModelService
     public QueueSimulationResponse Calculate(QueueSimulationRequest request)
     {
         var lambda = ResolveArrivalRate(request.ArrivalRate, request.MeanInterArrivalTime);
-        var mu = ResolveServiceRate(request.ServiceTime);
         var model = ResolveModel(request);
+        var serviceMoments = ResolveServiceMoments(request, model);
+        var mu = ResolveServiceRate(serviceMoments.MeanServiceTime);
 
         return model switch
         {
             "M/M/1" => CalculateMMs(lambda, mu, 1),
             "M/M/S" => CalculateMMs(lambda, mu, request.Servers),
-            "M/G/1" => CalculateMG1(lambda, mu, request.Variance),
+            "M/G/1" => CalculateMG1(lambda, mu, serviceMoments.Variance),
             "G/G/1" => CalculateGG1(lambda, mu, request.Ca, request.Cs),
             _ => throw new ArgumentException($"Unsupported model: {model}")
         };
@@ -191,9 +192,71 @@ public class QueueModelService
         {
             "poisson" => "M",
             "exponential" => "M",
+            "uniform" => "G",
+            "normal" => "G",
+            "gamma" => "G",
             "general" => "G",
             _ => throw new ArgumentException($"Unsupported distribution: {distribution}")
         };
+    }
+
+    private static ServiceMoments ResolveServiceMoments(QueueSimulationRequest request, string model)
+    {
+        double meanServiceTime;
+        double? variance = null;
+
+        if (request.ServiceTime.HasValue)
+        {
+            ValidatePositive(request.ServiceTime.Value, nameof(request.ServiceTime));
+            meanServiceTime = request.ServiceTime.Value;
+
+            if (request.Variance.HasValue)
+            {
+                if (request.Variance.Value < 0)
+                {
+                    throw new ArgumentException("Variance must be 0 or greater.");
+                }
+
+                variance = request.Variance.Value;
+            }
+            else if (request.ServiceStdDev.HasValue)
+            {
+                if (request.ServiceStdDev.Value < 0)
+                {
+                    throw new ArgumentException("Service standard deviation must be 0 or greater.");
+                }
+
+                variance = Math.Pow(request.ServiceStdDev.Value, 2);
+            }
+        }
+        else
+        {
+            if (!request.ServiceMinTime.HasValue || !request.ServiceMaxTime.HasValue)
+            {
+                throw new ArgumentException("Provide ServiceTime or both ServiceMinTime and ServiceMaxTime.");
+            }
+
+            var min = request.ServiceMinTime.Value;
+            var max = request.ServiceMaxTime.Value;
+
+            ValidatePositive(min, nameof(request.ServiceMinTime));
+            ValidatePositive(max, nameof(request.ServiceMaxTime));
+
+            if (max < min)
+            {
+                throw new ArgumentException("ServiceMaxTime must be greater than or equal to ServiceMinTime.");
+            }
+
+            meanServiceTime = (min + max) / 2.0;
+            variance = Math.Pow(max - min, 2) / 12.0;
+        }
+
+        if (model == "M/G/1" && !variance.HasValue)
+        {
+            throw new ArgumentException("Variance, ServiceStdDev, or ServiceMinTime/ServiceMaxTime is required for M/G/1.");
+        }
+
+        return new ServiceMoments(meanServiceTime, variance);
     }
 
     private static double ResolveArrivalRate(double? arrivalRate, double? meanInterArrivalTime)
@@ -255,4 +318,6 @@ public class QueueModelService
 
         return result;
     }
+
+    private readonly record struct ServiceMoments(double MeanServiceTime, double? Variance);
 }

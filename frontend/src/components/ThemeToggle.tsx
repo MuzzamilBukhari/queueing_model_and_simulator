@@ -4,52 +4,57 @@ import { Sun, Moon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function ThemeToggle() {
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-
-    const theme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    return theme === 'dark' || (!theme && prefersDark);
-  });
+  const [mounted, setMounted] = useState(false);
+  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
-    if (isDark) {
+    setMounted(true);
+    const theme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDarkMode = theme === 'dark' || (!theme && prefersDark);
+    setIsDark(isDarkMode);
+    if (isDarkMode) {
       document.documentElement.classList.add('dark');
-      return;
+    } else {
+      document.documentElement.classList.remove('dark');
     }
-
-    document.documentElement.classList.remove('dark');
-  }, [isDark]);
+  }, []);
 
   const toggleTheme = () => {
-    if (isDark) {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-      setIsDark(false);
-    } else {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-      setIsDark(true);
-    }
+    setIsDark((prev) => {
+      const next = !prev;
+      if (next) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+      }
+      return next;
+    });
   };
+
+  if (!mounted) {
+    return (
+      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
+    );
+  }
 
   return (
     <button
       onClick={toggleTheme}
-      className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 
-               hover:bg-gray-200 dark:hover:bg-gray-700 
-               transition-all duration-200 shadow-sm
-               focus:ring-2 focus:ring-blue-500 focus:outline-none
-               min-w-10 min-h-10 flex items-center justify-center"
+      className="p-2 rounded-xl bg-white dark:bg-slate-800 
+               border border-slate-200 dark:border-slate-700
+               hover:border-brand-500 dark:hover:border-brand-500 hover:shadow-md
+               transition-all duration-300 shadow-sm
+               focus:ring-2 focus:ring-brand-500/50 focus:outline-none
+               w-10 h-10 flex items-center justify-center group overflow-hidden relative"
       aria-label="Toggle theme"
     >
-      {isDark ? (
-        <Sun className="w-5 h-5 text-yellow-500" />
-      ) : (
-        <Moon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-      )}
+      <div className="relative w-5 h-5 flex items-center justify-center">
+        <Sun className={`absolute w-5 h-5 text-amber-500 transition-all duration-500 transform ${isDark ? 'rotate-90 opacity-0 scale-50' : 'rotate-0 opacity-100 scale-100'}`} />
+        <Moon className={`absolute w-5 h-5 text-brand-300 transition-all duration-500 transform ${isDark ? 'rotate-0 opacity-100 scale-100' : '-rotate-90 opacity-0 scale-50'}`} />
+      </div>
     </button>
   );
 }
