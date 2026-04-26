@@ -2,6 +2,14 @@
 
 import { TrendingUp, Users, Clock, CircleDot, Activity } from 'lucide-react';
 
+type TimeUnit = 'seconds' | 'minutes' | 'hours';
+
+const timeUnitLabel: Record<TimeUnit, string> = {
+  seconds: 'sec',
+  minutes: 'min',
+  hours: 'hr',
+};
+
 export interface SimulationResults {
   model: string;
   rho: number;
@@ -10,6 +18,7 @@ export interface SimulationResults {
   L: number;
   W: number;
   P0?: number | null;
+  timeUnit?: TimeUnit;
 }
 
 interface ResultsPanelProps {
@@ -18,6 +27,8 @@ interface ResultsPanelProps {
 
 export default function ResultsPanel({ results }: ResultsPanelProps) {
   if (!results) return null;
+
+  const selectedTimeUnit = results.timeUnit ?? 'minutes';
 
   const metrics = [
     {
@@ -39,7 +50,7 @@ export default function ResultsPanel({ results }: ResultsPanelProps) {
     {
       id: 'wq',
       title: 'Mean Wait in Queue (Wq)',
-      value: results.Wq.toFixed(4),
+      value: `${results.Wq.toFixed(4)} ${timeUnitLabel[selectedTimeUnit]}`,
       description: 'Average time a customer spends waiting in queue',
       icon: Clock,
       color: 'blue',
@@ -55,7 +66,7 @@ export default function ResultsPanel({ results }: ResultsPanelProps) {
     {
       id: 'w',
       title: 'Mean Wait in System (W)',
-      value: results.W.toFixed(4),
+      value: `${results.W.toFixed(4)} ${timeUnitLabel[selectedTimeUnit]}`,
       description: 'Average total time a customer spends in system',
       icon: Clock,
       color: 'green',

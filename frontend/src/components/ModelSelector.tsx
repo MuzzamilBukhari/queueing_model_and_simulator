@@ -40,7 +40,7 @@ export default function ModelSelector({
                      transition-all duration-200 cursor-pointer
                      hover:border-gray-400 dark:hover:border-gray-600"
           >
-            <option value="">Choose a model...</option>
+            <option value="" disabled>Choose a model...</option>
             {models.map((model) => (
               <option key={model} value={model}>
                 {model}

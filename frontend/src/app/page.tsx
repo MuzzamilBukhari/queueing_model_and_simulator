@@ -8,6 +8,26 @@ import InputForm from "@/components/InputForm";
 import ResultsPanel, { SimulationResults } from "@/components/ResultsPanel";
 import ThemeToggle from "@/components/ThemeToggle";
 
+type TimeUnit = "seconds" | "minutes" | "hours";
+
+const minutesPerUnit: Record<TimeUnit, number> = {
+  seconds: 1 / 60,
+  minutes: 1,
+  hours: 60,
+};
+
+function convertDurationToMinutes(value: number, unit: TimeUnit): number {
+  return value * minutesPerUnit[unit];
+}
+
+function convertRateToPerMinute(value: number, unit: TimeUnit): number {
+  return value / minutesPerUnit[unit];
+}
+
+function convertMinutesToUnit(value: number, unit: TimeUnit): number {
+  return value / minutesPerUnit[unit];
+}
+
 function detectModel(
   arrivalDistribution: string,
   serviceDistribution: string,
@@ -35,19 +55,11 @@ function resolveManualModel(selectedModel: string, servers: number): string {
     return "";
   }
 
-  if (selectedModel === "MMs") {
-    return servers === 1 ? "M/M/1" : "M/M/s";
+  if (selectedModel === "M/M/s") {
+    return servers >= 1 ? "M/M/s" : "";
   }
 
-  if (selectedModel === "MGs") {
-    return servers === 1 ? "M/G/1" : "";
-  }
-
-  if (selectedModel === "GGs") {
-    return servers === 1 ? "G/G/1" : "";
-  }
-
-  return "";
+  return selectedModel;
 }
 
 export default function Home() {
@@ -55,13 +67,16 @@ export default function Home() {
     "home",
   );
   const [mode, setMode] = useState<"manual" | "auto">("manual");
-  const [selectedModel, setSelectedModel] = useState("MMs");
+  const [manualServerMode, setManualServerMode] = useState<"single" | "multi">("single");
+  const [selectedModel, setSelectedModel] = useState("M/M/1");
   const [arrivalDistribution, setArrivalDistribution] = useState("Poisson");
   const [serviceDistribution, setServiceDistribution] = useState("Exponential");
   const [arrivalInputType, setArrivalInputType] = useState<
     "rate" | "meanInterArrival"
   >("rate");
+  const [arrivalTimeUnit, setArrivalTimeUnit] = useState<TimeUnit>("minutes");
   const [arrivalValue, setArrivalValue] = useState("");
+  const [serviceTimeUnit, setServiceTimeUnit] = useState<TimeUnit>("minutes");
   const [serviceTime, setServiceTime] = useState("");
   const [serviceInputMode, setServiceInputMode] = useState<
     "meanSpread" | "minMax"
@@ -75,6 +90,7 @@ export default function Home() {
   const [servers, setServers] = useState(1);
   const [ca, setCa] = useState("");
   const [cs, setCs] = useState("");
+  const [resultTimeUnit, setResultTimeUnit] = useState<TimeUnit>("minutes");
   const [results, setResults] = useState<SimulationResults | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -113,6 +129,34 @@ export default function Home() {
     }
   };
 
+  const handleManualServerModeChange = (value: "single" | "multi") => {
+    setManualServerMode(value);
+
+    if (value === "single") {
+      setServers(1);
+      if (selectedModel === "M/M/s") {
+        setSelectedModel("M/M/1");
+      } else if (selectedModel === "M/G/s") {
+        setSelectedModel("M/G/1");
+      } else if (selectedModel === "G/G/s") {
+        setSelectedModel("G/G/1");
+      }
+      return;
+    }
+
+    if (servers < 2) {
+      setServers(2);
+    }
+
+    if (selectedModel === "M/M/1") {
+      setSelectedModel("M/M/s");
+    } else if (selectedModel === "M/G/1") {
+      setSelectedModel("M/G/s");
+    } else if (selectedModel === "G/G/1") {
+      setSelectedModel("G/G/s");
+    }
+  };
+
   const effectiveModel =
     mode === "manual"
       ? resolveManualModel(selectedModel, servers)
@@ -144,9 +188,15 @@ export default function Home() {
       return;
     }
 
-    if (mode === "manual" && selectedModel !== "MMs" && servers > 1) {
+    if (
+      mode === "manual" &&
+      servers > 1 &&
+      selectedModel !== "M/M/s" &&
+      selectedModel !== "M/G/s" &&
+      selectedModel !== "G/G/s"
+    ) {
       toast.error(
-        "MGs and GGs currently support only 1 server in this simulator.",
+        "Unsupported model selected for multi-server mode.",
       );
       return;
     }
@@ -177,21 +227,21 @@ export default function Home() {
       }
     }
 
-    if (effectiveModel === "M/G/1" && serviceInputMode === "meanSpread") {
+    if (effectiveModel.startsWith("M/G/") && serviceInputMode === "meanSpread") {
       if (!serviceSpreadValue || parseFloat(serviceSpreadValue) < 0) {
         toast.error(
-          "Please provide a valid non-negative service variance or standard deviation for M/G/1.",
+          "Please provide a valid non-negative service variance or standard deviation for M/G models.",
         );
         return;
       }
     }
 
     if (
-      effectiveModel === "G/G/1" &&
+      effectiveModel.startsWith("G/G/") &&
       (!ca || !cs || parseFloat(ca) < 0 || parseFloat(cs) < 0)
     ) {
       toast.error(
-        "Please provide valid non-negative Ca and Cs values for G/G/1.",
+        "Please provide valid non-negative Ca^2 and Cs^2 values for G/G models.",
       );
       return;
     }
@@ -201,47 +251,81 @@ export default function Home() {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5196";
 
+      const normalizedServiceTime =
+        serviceInputMode === "meanSpread" && parsedServiceTime
+          ? convertDurationToMinutes(parsedServiceTime, serviceTimeUnit)
+          : undefined;
+      const normalizedServiceMin =
+        serviceInputMode === "minMax" && parsedServiceMin
+          ? convertDurationToMinutes(parsedServiceMin, serviceTimeUnit)
+          : undefined;
+      const normalizedServiceMax =
+        serviceInputMode === "minMax" && parsedServiceMax
+          ? convertDurationToMinutes(parsedServiceMax, serviceTimeUnit)
+          : undefined;
+      const spreadValue =
+        effectiveModel.startsWith("M/G/") &&
+        serviceInputMode === "meanSpread" &&
+        serviceSpreadValue
+          ? parseFloat(serviceSpreadValue)
+          : undefined;
+      const normalizedVariance =
+        spreadValue !== undefined && serviceSpreadType === "variance"
+          ? spreadValue * Math.pow(minutesPerUnit[serviceTimeUnit], 2)
+          : undefined;
+      const normalizedStdDev =
+        spreadValue !== undefined && serviceSpreadType === "stdDev"
+          ? spreadValue * minutesPerUnit[serviceTimeUnit]
+          : undefined;
+
       const payload: Record<string, unknown> = {
         autoDetectModel: mode === "auto",
         model:
           mode === "manual"
-            ? selectedModel === "MMs"
+            ? selectedModel === "M/M/1" || selectedModel === "M/M/s"
               ? "M/M/s"
-              : selectedModel === "MGs"
-                ? "M/G/1"
-                : selectedModel === "GGs"
-                  ? "G/G/1"
+              : selectedModel === "M/G/1" || selectedModel === "M/G/s"
+                ? servers > 1
+                  ? "M/G/s"
+                  : "M/G/1"
+                : selectedModel === "G/G/1" || selectedModel === "G/G/s"
+                  ? servers > 1
+                    ? "G/G/s"
+                    : "G/G/1"
                   : undefined
             : undefined,
         arrivalDistribution: mode === "auto" ? arrivalDistribution : undefined,
         serviceDistribution: mode === "auto" ? serviceDistribution : undefined,
         serviceTime:
-          serviceInputMode === "meanSpread" ? parsedServiceTime : undefined,
+          serviceInputMode === "meanSpread" ? normalizedServiceTime : undefined,
         serviceMinTime:
-          serviceInputMode === "minMax" ? parsedServiceMin : undefined,
+          serviceInputMode === "minMax" ? normalizedServiceMin : undefined,
         serviceMaxTime:
-          serviceInputMode === "minMax" ? parsedServiceMax : undefined,
+          serviceInputMode === "minMax" ? normalizedServiceMax : undefined,
         servers,
         variance:
-          effectiveModel === "M/G/1" &&
+          effectiveModel.startsWith("M/G/") &&
           serviceInputMode === "meanSpread" &&
           serviceSpreadType === "variance"
-            ? parseFloat(serviceSpreadValue)
+            ? normalizedVariance
             : undefined,
         serviceStdDev:
-          effectiveModel === "M/G/1" &&
+          effectiveModel.startsWith("M/G/") &&
           serviceInputMode === "meanSpread" &&
           serviceSpreadType === "stdDev"
-            ? parseFloat(serviceSpreadValue)
+            ? normalizedStdDev
             : undefined,
-        ca: effectiveModel === "G/G/1" ? parseFloat(ca) : undefined,
-        cs: effectiveModel === "G/G/1" ? parseFloat(cs) : undefined,
+        ca: effectiveModel.startsWith("G/G/") ? parseFloat(ca) : undefined,
+        cs: effectiveModel.startsWith("G/G/") ? parseFloat(cs) : undefined,
       };
 
       if (arrivalInputType === "rate") {
-        payload.arrivalRate = parsedArrival;
+        payload.arrivalRate = convertRateToPerMinute(parsedArrival, arrivalTimeUnit);
       } else {
-        payload.meanInterArrivalTime = parsedArrival;
+        payload.meanInterArrivalTime = convertDurationToMinutes(
+          parsedArrival,
+          arrivalTimeUnit,
+        );
       }
 
       const response = await fetch(`${apiUrl}/api/simulation/calculate`, {
@@ -265,10 +349,11 @@ export default function Home() {
         model: data.model,
         rho: data.rho,
         Lq: data.lq,
-        Wq: data.wq,
+        Wq: convertMinutesToUnit(data.wq, resultTimeUnit),
         L: data.l,
-        W: data.w,
+        W: convertMinutesToUnit(data.w, resultTimeUnit),
         P0: data.p0,
+        timeUnit: resultTimeUnit,
       };
 
       setResults(apiResults);
@@ -332,7 +417,7 @@ export default function Home() {
           {activeTab === "home" ? (
             <div className="max-w-5xl mx-auto space-y-12 animate-fadeIn pb-12">
               {/* Hero Section */}
-              <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-brand-900 via-brand-950 to-slate-900 shadow-2xl border border-white/10 p-8 sm:p-14 text-center text-white">
+              <div className="relative overflow-hidden rounded-4xl bg-linear-to-br from-brand-900 via-brand-950 to-slate-900 shadow-2xl border border-white/10 p-8 sm:p-14 text-center text-white">
                 <div className="absolute top-0 right-0 -mt-20 -mr-20 w-72 h-72 bg-brand-500 rounded-full blur-[120px] opacity-30 animate-pulse-slow pointer-events-none"></div>
                 <div
                   className="absolute bottom-0 left-0 -mb-20 -ml-20 w-72 h-72 bg-cyan-500 rounded-full blur-[120px] opacity-20 animate-pulse-slow pointer-events-none"
@@ -347,7 +432,7 @@ export default function Home() {
                       className="w-full h-full object-contain"
                     />
                   </div>
-                  <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-brand-100 via-white to-brand-100">
+                  <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-linear-to-r from-brand-100 via-white to-brand-100">
                     OptiQueue
                   </h1>
                   <p className="text-lg sm:text-2xl text-brand-100/90 font-medium max-w-2xl mx-auto leading-relaxed">
@@ -368,11 +453,11 @@ export default function Home() {
                 style={{ animationDelay: "0.2s" }}
               >
                 <div className="flex items-center gap-6 mb-10">
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-700 to-transparent"></div>
+                  <div className="h-px flex-1 bg-linear-to-r from-transparent via-slate-300 dark:via-slate-700 to-transparent"></div>
                   <h2 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 uppercase tracking-widest text-center">
                     Team Members
                   </h2>
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300 dark:via-slate-700 to-transparent"></div>
+                  <div className="h-px flex-1 bg-linear-to-r from-transparent via-slate-300 dark:via-slate-700 to-transparent"></div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -389,7 +474,7 @@ export default function Home() {
                       key={i}
                       className="group p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl hover:shadow-brand-500/5 hover:border-brand-500/30 dark:hover:border-brand-500/30 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden"
                     >
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-brand-500/10 to-transparent rounded-bl-full -z-10 transition-transform duration-500 group-hover:scale-150"></div>
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-linear-to-bl from-brand-500/10 to-transparent rounded-bl-full -z-10 transition-transform duration-500 group-hover:scale-150"></div>
                       <div className="flex flex-col gap-1">
                         <h3 className="font-bold text-lg text-slate-800 dark:text-slate-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
                           {member.name}
@@ -413,6 +498,8 @@ export default function Home() {
               <InputForm
                 mode={mode}
                 onModeChange={handleModeChange}
+                manualServerMode={manualServerMode}
+                onManualServerModeChange={handleManualServerModeChange}
                 selectedModel={selectedModel}
                 onSelectedModelChange={setSelectedModel}
                 arrivalDistribution={arrivalDistribution}
@@ -423,8 +510,12 @@ export default function Home() {
                 onServersChange={setServers}
                 arrivalInputType={arrivalInputType}
                 onArrivalInputTypeChange={setArrivalInputType}
+                arrivalTimeUnit={arrivalTimeUnit}
+                onArrivalTimeUnitChange={setArrivalTimeUnit}
                 arrivalValue={arrivalValue}
                 onArrivalValueChange={setArrivalValue}
+                serviceTimeUnit={serviceTimeUnit}
+                onServiceTimeUnitChange={setServiceTimeUnit}
                 serviceTime={serviceTime}
                 onServiceTimeChange={setServiceTime}
                 serviceInputMode={serviceInputMode}
@@ -441,6 +532,8 @@ export default function Home() {
                 cs={cs}
                 onCaChange={setCa}
                 onCsChange={setCs}
+                resultTimeUnit={resultTimeUnit}
+                onResultTimeUnitChange={setResultTimeUnit}
                 effectiveModel={effectiveModel}
                 onSubmit={runSimulation}
                 isLoading={isLoading}
