@@ -7,6 +7,12 @@ import Sidebar from "@/components/Sidebar";
 import InputForm from "@/components/InputForm";
 import ResultsPanel, { SimulationResults } from "@/components/ResultsPanel";
 import ThemeToggle from "@/components/ThemeToggle";
+import SimulatorForm from "@/components/simulator/SimulatorForm";
+import CdfTable from "@/components/simulator/CdfTable";
+import TraceTable from "@/components/simulator/TraceTable";
+import GanttChart from "@/components/simulator/GanttChart";
+import SimulationSummary from "@/components/simulator/SimulationSummary";
+import { runMM1Simulation, SimulateResponse } from "@/lib/simulatorApi";
 
 type TimeUnit = "seconds" | "minutes" | "hours";
 
@@ -95,6 +101,11 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Simulator tab state
+  const [simResults, setSimResults] = useState<SimulateResponse | null>(null);
+  const [simLoading, setSimLoading] = useState(false);
+  const [simLambda, setSimLambda] = useState(2.65);
+
   const handleModeChange = (nextMode: "manual" | "auto") => {
     setMode(nextMode);
 
@@ -161,6 +172,26 @@ export default function Home() {
     mode === "manual"
       ? resolveManualModel(selectedModel, servers)
       : detectModel(arrivalDistribution, serviceDistribution, servers);
+
+  const handleSimulate = async (payload: {
+    lambda: number;
+    mu: number;
+    numCustomers: number;
+    seed?: number;
+  }) => {
+    setSimLoading(true);
+    setSimLambda(payload.lambda);
+    try {
+      const data = await runMM1Simulation(payload);
+      setSimResults(data);
+      toast.success("Simulation completed!");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Simulation failed";
+      toast.error(message);
+    } finally {
+      setSimLoading(false);
+    }
+  };
 
   const runSimulation = async (e: FormEvent) => {
     e.preventDefault();
@@ -542,19 +573,17 @@ export default function Home() {
               {results && <ResultsPanel results={results} />}
             </div>
           ) : (
-            <div className="max-w-4xl mx-auto">
-              <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-8 sm:p-12 border border-slate-200 dark:border-slate-800 text-center animate-slideUp">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-brand-50 dark:bg-brand-900/20 text-brand-500 mb-6 group hover:scale-110 transition-transform cursor-pointer">
-                  <Settings className="w-10 h-10 animate-spin-slow group-hover:animate-spin" />
-                </div>
-                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-3 tracking-tight">
-                  Simulator Module
-                </h2>
-                <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400 max-w-lg mx-auto">
-                  Advanced simulation environment under development. Check back
-                  soon for interactive features.
-                </p>
-              </div>
+            <div className="max-w-5xl mx-auto space-y-6 pb-12">
+              <SimulatorForm onSubmit={handleSimulate} isLoading={simLoading} />
+
+              {simResults && (
+                <>
+                  <SimulationSummary results={simResults} />
+                  <GanttChart segments={simResults.ganttSegments} />
+                  <TraceTable customers={simResults.customers} />
+                  <CdfTable rows={simResults.cdfTable} lambda={simLambda} />
+                </>
+              )}
             </div>
           )}
         </div>

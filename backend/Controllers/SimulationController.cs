@@ -9,10 +9,14 @@ namespace QueueSimulatorAPI.Controllers;
 public class SimulationController : ControllerBase
 {
     private readonly QueueModelService _queueModelService;
+    private readonly MM1SimulatorService _mm1SimulatorService;
 
-    public SimulationController(QueueModelService queueModelService)
+    public SimulationController(
+        QueueModelService queueModelService,
+        MM1SimulatorService mm1SimulatorService)
     {
         _queueModelService = queueModelService;
+        _mm1SimulatorService = mm1SimulatorService;
     }
 
     /// <summary>
@@ -38,6 +42,36 @@ public class SimulationController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "An unexpected error occurred", details = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Discrete-event M/M/1 simulator: generates N customers using Poisson arrivals
+    /// and exponential service times, returns the full trace table + Gantt segments
+    /// + aggregate performance measures.
+    /// </summary>
+    [HttpPost("mm1/simulate")]
+    [ProducesResponseType(typeof(SimulationTraceResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public IActionResult SimulateMM1([FromBody] SimulationTraceRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        try
+        {
+            var response = _mm1SimulatorService.Simulate(request);
+            return Ok(response);
         }
         catch (ArgumentException ex)
         {
