@@ -44,10 +44,26 @@ interface InputFormProps {
   onServiceMinTimeChange: (value: string) => void;
   serviceMaxTime: string;
   onServiceMaxTimeChange: (value: string) => void;
-  ca: string;
-  cs: string;
-  onCaChange: (value: string) => void;
-  onCsChange: (value: string) => void;
+  arrivalInputMode: 'meanSpread' | 'minMax';
+  onArrivalInputModeChange: (value: 'meanSpread' | 'minMax') => void;
+  arrivalSpreadType: 'variance' | 'stdDev';
+  onArrivalSpreadTypeChange: (value: 'variance' | 'stdDev') => void;
+  arrivalSpreadValue: string;
+  onArrivalSpreadValueChange: (value: string) => void;
+  arrivalMinTime: string;
+  onArrivalMinTimeChange: (value: string) => void;
+  arrivalMaxTime: string;
+  onArrivalMaxTimeChange: (value: string) => void;
+  ggServiceInputMode: 'meanSpread' | 'minMax';
+  onGgServiceInputModeChange: (value: 'meanSpread' | 'minMax') => void;
+  ggServiceSpreadType: 'variance' | 'stdDev';
+  onGgServiceSpreadTypeChange: (value: 'variance' | 'stdDev') => void;
+  ggServiceSpreadValue: string;
+  onGgServiceSpreadValueChange: (value: string) => void;
+  ggServiceMinTime: string;
+  onGgServiceMinTimeChange: (value: string) => void;
+  ggServiceMaxTime: string;
+  onGgServiceMaxTimeChange: (value: string) => void;
   resultTimeUnit: TimeUnit;
   onResultTimeUnitChange: (value: TimeUnit) => void;
   effectiveModel: string;
@@ -94,10 +110,26 @@ export default function InputForm({
   onServiceMinTimeChange,
   serviceMaxTime,
   onServiceMaxTimeChange,
-  ca,
-  cs,
-  onCaChange,
-  onCsChange,
+  arrivalInputMode,
+  onArrivalInputModeChange,
+  arrivalSpreadType,
+  onArrivalSpreadTypeChange,
+  arrivalSpreadValue,
+  onArrivalSpreadValueChange,
+  arrivalMinTime,
+  onArrivalMinTimeChange,
+  arrivalMaxTime,
+  onArrivalMaxTimeChange,
+  ggServiceInputMode,
+  onGgServiceInputModeChange,
+  ggServiceSpreadType,
+  onGgServiceSpreadTypeChange,
+  ggServiceSpreadValue,
+  onGgServiceSpreadValueChange,
+  ggServiceMinTime,
+  onGgServiceMinTimeChange,
+  ggServiceMaxTime,
+  onGgServiceMaxTimeChange,
   resultTimeUnit,
   onResultTimeUnitChange,
   effectiveModel,
@@ -106,6 +138,12 @@ export default function InputForm({
 }: InputFormProps) {
   const isMgModel = effectiveModel.startsWith('M/G/');
   const isGgModel = effectiveModel.startsWith('G/G/');
+  const arrIsUniform = mode === 'auto' && arrivalDistribution === 'Uniform';
+  const svcIsUniform = mode === 'auto' && serviceDistribution === 'Uniform';
+  // Effective modes: auto-Uniform forces minMax, otherwise use manual toggle
+  const effMgSvcMode = svcIsUniform ? 'minMax' : serviceInputMode;
+  const effArrMode = arrIsUniform ? 'minMax' : arrivalInputMode;
+  const effGgSvcMode = svcIsUniform ? 'minMax' : ggServiceInputMode;
   const forceArrivalInputType =
     mode === 'auto' && arrivalDistribution === 'Poisson'
       ? 'rate'
@@ -113,14 +151,28 @@ export default function InputForm({
         ? 'meanInterArrival'
         : null;
 
+  const mgSpreadValid = isMgModel && serviceInputType === 'mean'
+    ? (effMgSvcMode === 'minMax'
+        ? Boolean(serviceMinTime && serviceMaxTime && parseFloat(serviceMinTime) > 0 && parseFloat(serviceMaxTime) > 0)
+        : Boolean(serviceSpreadValue && parseFloat(serviceSpreadValue) >= 0))
+    : true;
+
   const serviceValid =
     serviceInputType === 'rate'
       ? Boolean(serviceRateValue && parseFloat(serviceRateValue) > 0)
-      : Boolean(
-          serviceTime &&
-          parseFloat(serviceTime) > 0 &&
-          (!isMgModel || (serviceSpreadValue && parseFloat(serviceSpreadValue) >= 0))
-        );
+      : Boolean(serviceTime && parseFloat(serviceTime) > 0 && mgSpreadValid);
+
+  const ggArrivalValid = isGgModel
+    ? (effArrMode === 'minMax'
+        ? Boolean(arrivalMinTime && arrivalMaxTime && parseFloat(arrivalMinTime) > 0 && parseFloat(arrivalMaxTime) > 0)
+        : Boolean(arrivalSpreadValue && parseFloat(arrivalSpreadValue) >= 0))
+    : true;
+
+  const ggServiceValid = isGgModel
+    ? (effGgSvcMode === 'minMax'
+        ? Boolean(ggServiceMinTime && ggServiceMaxTime && parseFloat(ggServiceMinTime) > 0 && parseFloat(ggServiceMaxTime) > 0)
+        : Boolean(ggServiceSpreadValue && parseFloat(ggServiceSpreadValue) >= 0))
+    : true;
 
   const baseValid =
     arrivalValue &&
@@ -134,12 +186,8 @@ export default function InputForm({
       : Boolean(arrivalDistribution) && Boolean(serviceDistribution);
 
   const modelSupported = Boolean(effectiveModel);
-  const mg1Valid = !isMgModel || (serviceInputMode === 'minMax' || (serviceSpreadValue && parseFloat(serviceSpreadValue) >= 0));
-  const gg1Valid =
-    !isGgModel ||
-    (ca && cs && parseFloat(ca) >= 0 && parseFloat(cs) >= 0);
 
-  const isValid = Boolean(baseValid && modeValid && modelSupported && mg1Valid && gg1Valid);
+  const isValid = Boolean(baseValid && modeValid && modelSupported && ggArrivalValid && ggServiceValid);
   const modelOptions =
     manualServerMode === 'single'
       ? ['M/M/1', 'M/G/1', 'G/G/1']
@@ -358,6 +406,53 @@ export default function InputForm({
                   required
                 />
               </div>
+
+              {/* G/G/1 arrival spread */}
+              {isGgModel && (
+                <div className="animate-slideUp pt-1 flex flex-col gap-3">
+                  {/* toggle only in manual mode */}
+                  {!arrIsUniform && (
+                    <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200/50 dark:bg-slate-900/50 rounded-xl">
+                      <button type="button" onClick={() => onArrivalInputModeChange('meanSpread')} disabled={isLoading}
+                        className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ arrivalInputMode === 'meanSpread' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
+                        Spread
+                      </button>
+                      <button type="button" onClick={() => onArrivalInputModeChange('minMax')} disabled={isLoading}
+                        className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ arrivalInputMode === 'minMax' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
+                        Min / Max
+                      </button>
+                    </div>
+                  )}
+                  {effArrMode === 'minMax' ? (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Inter-arrival Min / Max</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input type="number" step="0.01" min="0.01" value={arrivalMinTime} onChange={(e) => onArrivalMinTimeChange(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
+                          placeholder="Min (e.g. 0.5)" disabled={isLoading} required />
+                        <input type="number" step="0.01" min="0.01" value={arrivalMaxTime} onChange={(e) => onArrivalMaxTimeChange(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
+                          placeholder="Max (e.g. 2.0)" disabled={isLoading} required />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Spread Type</span>
+                        <select value={arrivalSpreadType} onChange={(e) => onArrivalSpreadTypeChange(e.target.value as 'variance' | 'stdDev')}
+                          className="bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 rounded-lg px-2 py-1 text-xs font-bold cursor-pointer outline-none">
+                          <option value="variance">Variance</option>
+                          <option value="stdDev">Standard Dev</option>
+                        </select>
+                      </div>
+                      <input type="number" step="0.01" min="0" value={arrivalSpreadValue} onChange={(e) => onArrivalSpreadValueChange(e.target.value)}
+                        className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-lg font-semibold"
+                        placeholder={arrivalSpreadType === 'variance' ? 'Variance (e.g. 1.44)' : 'Std Dev (e.g. 1.2)'}
+                        disabled={isLoading} required />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -434,107 +529,118 @@ export default function InputForm({
                 />
               </div>
 
-              {/* Spread — only for M/G models in Mean Time mode */}
+              {/* Spread — for M/G models in Mean Time mode */}
               {isMgModel && serviceInputType === 'mean' && (
-                <div className="animate-slideUp pt-1">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Spread Type</span>
-                    <select
-                      value={serviceSpreadType}
-                      onChange={(e) => onServiceSpreadTypeChange(e.target.value as 'variance' | 'stdDev')}
-                      className="bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 rounded-lg px-2 py-1 text-xs font-bold cursor-pointer outline-none"
-                    >
-                      <option value="variance">Variance</option>
-                      <option value="stdDev">Standard Dev</option>
-                    </select>
-                  </div>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={serviceSpreadValue}
-                    onChange={(e) => onServiceSpreadValueChange(e.target.value)}
-                    className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700
-                             bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-900 dark:text-white
-                             focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none
-                             transition-all shadow-sm hover:shadow-md disabled:opacity-50 text-lg font-semibold"
-                    placeholder={serviceSpreadType === 'variance' ? 'Variance (e.g., 0.8)' : 'Std Dev (e.g., 0.9)'}
-                    disabled={isLoading}
-                    required
-                  />
+                <div className="animate-slideUp pt-1 flex flex-col gap-3">
+                  {!svcIsUniform && (
+                    <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200/50 dark:bg-slate-900/50 rounded-xl">
+                      <button type="button" onClick={() => onServiceInputModeChange('meanSpread')} disabled={isLoading}
+                        className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ serviceInputMode === 'meanSpread' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
+                        Spread
+                      </button>
+                      <button type="button" onClick={() => onServiceInputModeChange('minMax')} disabled={isLoading}
+                        className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ serviceInputMode === 'minMax' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
+                        Min / Max
+                      </button>
+                    </div>
+                  )}
+                  {effMgSvcMode === 'minMax' ? (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Service Min / Max</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input type="number" step="0.01" min="0.01" value={serviceMinTime} onChange={(e) => onServiceMinTimeChange(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
+                          placeholder="Min (e.g. 0.5)" disabled={isLoading} required />
+                        <input type="number" step="0.01" min="0.01" value={serviceMaxTime} onChange={(e) => onServiceMaxTimeChange(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
+                          placeholder="Max (e.g. 2.0)" disabled={isLoading} required />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Spread Type</span>
+                        <select value={serviceSpreadType} onChange={(e) => onServiceSpreadTypeChange(e.target.value as 'variance' | 'stdDev')}
+                          className="bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 rounded-lg px-2 py-1 text-xs font-bold cursor-pointer outline-none">
+                          <option value="variance">Variance</option>
+                          <option value="stdDev">Standard Dev</option>
+                        </select>
+                      </div>
+                      <input type="number" step="0.01" min="0" value={serviceSpreadValue} onChange={(e) => onServiceSpreadValueChange(e.target.value)}
+                        className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-lg font-semibold"
+                        placeholder={serviceSpreadType === 'variance' ? 'Variance (e.g., 0.8)' : 'Std Dev (e.g., 0.9)'}
+                        disabled={isLoading} required />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* G/G/1 service spread */}
+              {isGgModel && serviceInputType === 'mean' && (
+                <div className="animate-slideUp pt-1 flex flex-col gap-3">
+                  {!svcIsUniform && (
+                    <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200/50 dark:bg-slate-900/50 rounded-xl">
+                      <button type="button" onClick={() => onGgServiceInputModeChange('meanSpread')} disabled={isLoading}
+                        className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ ggServiceInputMode === 'meanSpread' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
+                        Spread
+                      </button>
+                      <button type="button" onClick={() => onGgServiceInputModeChange('minMax')} disabled={isLoading}
+                        className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ ggServiceInputMode === 'minMax' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
+                        Min / Max
+                      </button>
+                    </div>
+                  )}
+                  {effGgSvcMode === 'minMax' ? (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Service Min / Max</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input type="number" step="0.01" min="0.01" value={ggServiceMinTime} onChange={(e) => onGgServiceMinTimeChange(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
+                          placeholder="Min (e.g. 0.5)" disabled={isLoading} required />
+                        <input type="number" step="0.01" min="0.01" value={ggServiceMaxTime} onChange={(e) => onGgServiceMaxTimeChange(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
+                          placeholder="Max (e.g. 2.0)" disabled={isLoading} required />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Spread Type</span>
+                        <select value={ggServiceSpreadType} onChange={(e) => onGgServiceSpreadTypeChange(e.target.value as 'variance' | 'stdDev')}
+                          className="bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 rounded-lg px-2 py-1 text-xs font-bold cursor-pointer outline-none">
+                          <option value="variance">Variance</option>
+                          <option value="stdDev">Standard Dev</option>
+                        </select>
+                      </div>
+                      <input type="number" step="0.01" min="0" value={ggServiceSpreadValue} onChange={(e) => onGgServiceSpreadValueChange(e.target.value)}
+                        className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-lg font-semibold"
+                        placeholder={ggServiceSpreadType === 'variance' ? 'Variance (e.g., 0.81)' : 'Std Dev (e.g., 0.9)'}
+                        disabled={isLoading} required />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Server & CV Settings */}
-        <div className="flex flex-col md:flex-row gap-6">
-          {(mode === 'auto' || servers > 1) && (
-            <div className="flex-1 bg-slate-50/50 dark:bg-slate-800/30 p-6 rounded-4xl border border-slate-200/50 dark:border-slate-700/50">
-              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-4 uppercase tracking-wider">
-                Servers Configuration
-              </label>
-              <div className="flex items-center">
-                <input
-                  type="number"
-                  min="1"
-                  value={servers}
-                  onChange={(e) => onServersChange(parseInt(e.target.value, 10) || 1)}
-                  className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 
-                         bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-900 dark:text-white
-                         focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none
-                         transition-all shadow-sm hover:shadow-md disabled:opacity-50 text-2xl font-extrabold text-center font-mono tracking-widest"
-                  disabled={isLoading}
-                  required
-                />
-              </div>
-            </div>
-          )}
-
-          {isGgModel && (
-            <div className="flex-2 grid grid-cols-2 gap-4 bg-slate-50/50 dark:bg-slate-800/30 p-6 rounded-4xl border border-slate-200/50 dark:border-slate-700/50 animate-fadeIn">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-4 uppercase tracking-wider">
-                  Arrival Variability (Ca^2)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={ca}
-                  onChange={(e) => onCaChange(e.target.value)}
-                  className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 
-                           bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-900 dark:text-white
-                           focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none
-                           transition-all shadow-sm hover:shadow-md disabled:opacity-50 text-lg font-semibold"
-                  placeholder="e.g., 1.44"
-                  disabled={isLoading}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-4 uppercase tracking-wider">
-                  Service Variability (Cs^2)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={cs}
-                  onChange={(e) => onCsChange(e.target.value)}
-                  className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 
-                           bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-900 dark:text-white
-                           focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none
-                           transition-all shadow-sm hover:shadow-md disabled:opacity-50 text-lg font-semibold"
-                  placeholder="e.g., 0.81"
-                  disabled={isLoading}
-                  required
-                />
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Server Settings (only for multi-server) */}
+        {(mode === 'auto' || servers > 1) && (
+          <div className="bg-slate-50/50 dark:bg-slate-800/30 p-6 rounded-4xl border border-slate-200/50 dark:border-slate-700/50">
+            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-4 uppercase tracking-wider">
+              Servers Configuration
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={servers}
+              onChange={(e) => onServersChange(parseInt(e.target.value, 10) || 1)}
+              className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-2xl font-extrabold text-center font-mono tracking-widest"
+              disabled={isLoading}
+              required
+            />
+          </div>
+        )}
 
         {/* Action Button & Metadata */}
         <div className="pt-6 flex flex-col items-center">
