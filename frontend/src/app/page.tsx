@@ -3,7 +3,8 @@
 import { useState, FormEvent } from "react";
 import { Toaster, toast } from "react-hot-toast";
 import { Menu, Settings, X } from "lucide-react";
-import Sidebar from "@/components/Sidebar";
+import Sidebar, { AppTab } from "@/components/Sidebar";
+import MathEnginePanel from "@/components/mathEngine/MathEnginePanel";
 import InputForm from "@/components/InputForm";
 import ResultsPanel, { SimulationResults } from "@/components/ResultsPanel";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -69,9 +70,7 @@ function resolveManualModel(selectedModel: string, servers: number): string {
 }
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<"home" | "models" | "simulator">(
-    "home",
-  );
+  const [activeTab, setActiveTab] = useState<AppTab>("home");
   const [mode, setMode] = useState<"manual" | "auto">("manual");
   const [manualServerMode, setManualServerMode] = useState<"single" | "multi">("single");
   const [selectedModel, setSelectedModel] = useState("M/M/1");
@@ -82,6 +81,9 @@ export default function Home() {
   >("rate");
   const [arrivalTimeUnit, setArrivalTimeUnit] = useState<TimeUnit>("minutes");
   const [arrivalValue, setArrivalValue] = useState("");
+  const [serviceInputType, setServiceInputType] = useState<"rate" | "mean">("mean");
+  const [serviceRateValue, setServiceRateValue] = useState("");
+  const [serviceRateUnit, setServiceRateUnit] = useState<TimeUnit>("minutes");
   const [serviceTimeUnit, setServiceTimeUnit] = useState<TimeUnit>("minutes");
   const [serviceTime, setServiceTime] = useState("");
   const [serviceInputMode, setServiceInputMode] = useState<
@@ -207,12 +209,20 @@ export default function Home() {
     }
 
     const parsedArrival = parseFloat(arrivalValue);
+    const parsedServiceRate =
+      serviceInputType === "rate" ? parseFloat(serviceRateValue) : undefined;
     const parsedServiceTime =
-      serviceInputMode === "meanSpread" ? parseFloat(serviceTime) : undefined;
+      serviceInputType === "mean" && serviceInputMode === "meanSpread"
+        ? parseFloat(serviceTime)
+        : undefined;
     const parsedServiceMin =
-      serviceInputMode === "minMax" ? parseFloat(serviceMinTime) : undefined;
+      serviceInputType === "mean" && serviceInputMode === "minMax"
+        ? parseFloat(serviceMinTime)
+        : undefined;
     const parsedServiceMax =
-      serviceInputMode === "minMax" ? parseFloat(serviceMaxTime) : undefined;
+      serviceInputType === "mean" && serviceInputMode === "minMax"
+        ? parseFloat(serviceMaxTime)
+        : undefined;
 
     if (parsedArrival <= 0 || servers < 1) {
       toast.error("Inputs must be positive values");
@@ -232,7 +242,12 @@ export default function Home() {
       return;
     }
 
-    if (serviceInputMode === "meanSpread") {
+    if (serviceInputType === "rate") {
+      if (!serviceRateValue || !parsedServiceRate || parsedServiceRate <= 0) {
+        toast.error("Please provide a valid positive service rate (μ).");
+        return;
+      }
+    } else if (serviceInputMode === "meanSpread") {
       if (!serviceTime || !parsedServiceTime || parsedServiceTime <= 0) {
         toast.error("Please provide a valid mean service time.");
         return;
@@ -258,7 +273,7 @@ export default function Home() {
       }
     }
 
-    if (effectiveModel.startsWith("M/G/") && serviceInputMode === "meanSpread") {
+    if (effectiveModel.startsWith("M/G/") && serviceInputType === "mean" && serviceInputMode === "meanSpread") {
       if (!serviceSpreadValue || parseFloat(serviceSpreadValue) < 0) {
         toast.error(
           "Please provide a valid non-negative service variance or standard deviation for M/G models.",
@@ -282,22 +297,26 @@ export default function Home() {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5196";
 
+      // When rate (μ) is entered directly, convert to service time in minutes: 1 / (rate per minute)
       const normalizedServiceTime =
-        serviceInputMode === "meanSpread" && parsedServiceTime
-          ? convertDurationToMinutes(parsedServiceTime, serviceTimeUnit)
-          : undefined;
+        serviceInputType === "rate" && parsedServiceRate
+          ? 1 / convertRateToPerMinute(parsedServiceRate, serviceRateUnit)
+          : serviceInputType === "mean" && serviceInputMode === "meanSpread" && parsedServiceTime
+            ? convertDurationToMinutes(parsedServiceTime, serviceTimeUnit)
+            : undefined;
       const normalizedServiceMin =
-        serviceInputMode === "minMax" && parsedServiceMin
+        serviceInputType === "mean" && serviceInputMode === "minMax" && parsedServiceMin
           ? convertDurationToMinutes(parsedServiceMin, serviceTimeUnit)
           : undefined;
       const normalizedServiceMax =
-        serviceInputMode === "minMax" && parsedServiceMax
+        serviceInputType === "mean" && serviceInputMode === "minMax" && parsedServiceMax
           ? convertDurationToMinutes(parsedServiceMax, serviceTimeUnit)
           : undefined;
       const spreadValue =
         effectiveModel.startsWith("M/G/") &&
-        serviceInputMode === "meanSpread" &&
-        serviceSpreadValue
+          serviceInputType === "mean" &&
+          serviceInputMode === "meanSpread" &&
+          serviceSpreadValue
           ? parseFloat(serviceSpreadValue)
           : undefined;
       const normalizedVariance =
@@ -336,14 +355,14 @@ export default function Home() {
         servers,
         variance:
           effectiveModel.startsWith("M/G/") &&
-          serviceInputMode === "meanSpread" &&
-          serviceSpreadType === "variance"
+            serviceInputMode === "meanSpread" &&
+            serviceSpreadType === "variance"
             ? normalizedVariance
             : undefined,
         serviceStdDev:
           effectiveModel.startsWith("M/G/") &&
-          serviceInputMode === "meanSpread" &&
-          serviceSpreadType === "stdDev"
+            serviceInputMode === "meanSpread" &&
+            serviceSpreadType === "stdDev"
             ? normalizedStdDev
             : undefined,
         ca: effectiveModel.startsWith("G/G/") ? parseFloat(ca) : undefined,
@@ -436,7 +455,9 @@ export default function Home() {
                   ? "Overview"
                   : activeTab === "models"
                     ? "Queueing Models"
-                    : "Simulator"}
+                    : activeTab === "simulator"
+                      ? "Simulator"
+                      : "Math Engine"}
               </h1>
             </div>
             <ThemeToggle />
@@ -524,6 +545,10 @@ export default function Home() {
                 </div>
               </div>
             </div>
+          ) : activeTab === "mathengine" ? (
+            <div className="max-w-[1400px] mx-auto -m-4 sm:-m-6 lg:-m-8">
+              <MathEnginePanel />
+            </div>
           ) : activeTab === "models" ? (
             <div className="max-w-4xl mx-auto space-y-6">
               <InputForm
@@ -545,6 +570,12 @@ export default function Home() {
                 onArrivalTimeUnitChange={setArrivalTimeUnit}
                 arrivalValue={arrivalValue}
                 onArrivalValueChange={setArrivalValue}
+                serviceInputType={serviceInputType}
+                onServiceInputTypeChange={setServiceInputType}
+                serviceRateValue={serviceRateValue}
+                onServiceRateValueChange={setServiceRateValue}
+                serviceRateUnit={serviceRateUnit}
+                onServiceRateUnitChange={setServiceRateUnit}
                 serviceTimeUnit={serviceTimeUnit}
                 onServiceTimeUnitChange={setServiceTimeUnit}
                 serviceTime={serviceTime}

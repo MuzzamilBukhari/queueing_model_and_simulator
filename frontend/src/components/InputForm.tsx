@@ -24,6 +24,12 @@ interface InputFormProps {
   onArrivalTimeUnitChange: (value: TimeUnit) => void;
   arrivalValue: string;
   onArrivalValueChange: (value: string) => void;
+  serviceInputType: 'rate' | 'mean';
+  onServiceInputTypeChange: (value: 'rate' | 'mean') => void;
+  serviceRateValue: string;
+  onServiceRateValueChange: (value: string) => void;
+  serviceRateUnit: TimeUnit;
+  onServiceRateUnitChange: (value: TimeUnit) => void;
   serviceTimeUnit: TimeUnit;
   onServiceTimeUnitChange: (value: TimeUnit) => void;
   serviceTime: string;
@@ -68,6 +74,12 @@ export default function InputForm({
   onArrivalTimeUnitChange,
   arrivalValue,
   onArrivalValueChange,
+  serviceInputType,
+  onServiceInputTypeChange,
+  serviceRateValue,
+  onServiceRateValueChange,
+  serviceRateUnit,
+  onServiceRateUnitChange,
   serviceTimeUnit,
   onServiceTimeUnitChange,
   serviceTime,
@@ -101,19 +113,14 @@ export default function InputForm({
         ? 'meanInterArrival'
         : null;
 
-  const serviceMeanSpreadValid =
-    serviceTime &&
-    parseFloat(serviceTime) > 0 &&
-    (!isMgModel || (serviceSpreadValue && parseFloat(serviceSpreadValue) >= 0));
-
-  const serviceMinMaxValid =
-    serviceMinTime &&
-    serviceMaxTime &&
-    parseFloat(serviceMinTime) > 0 &&
-    parseFloat(serviceMaxTime) > 0 &&
-    parseFloat(serviceMaxTime) >= parseFloat(serviceMinTime);
-
-  const serviceValid = serviceInputMode === 'meanSpread' ? serviceMeanSpreadValid : serviceMinMaxValid;
+  const serviceValid =
+    serviceInputType === 'rate'
+      ? Boolean(serviceRateValue && parseFloat(serviceRateValue) > 0)
+      : Boolean(
+          serviceTime &&
+          parseFloat(serviceTime) > 0 &&
+          (!isMgModel || (serviceSpreadValue && parseFloat(serviceSpreadValue) >= 0))
+        );
 
   const baseValid =
     arrivalValue &&
@@ -354,146 +361,107 @@ export default function InputForm({
             </div>
           </div>
 
-          {/* Service Time Input */}
+          {/* Service Input */}
           <div className="bg-slate-50/50 dark:bg-slate-800/30 p-6 rounded-4xl border border-slate-200/50 dark:border-slate-700/50">
             <p className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-4 uppercase tracking-wider">Service Input</p>
             <div className="flex flex-col gap-4">
+
+              {/* Rate (μ) | Mean Time — mirrors Arrival Input exactly */}
               <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-200/50 dark:bg-slate-900/50 rounded-2xl">
                 <button
                   type="button"
-                  onClick={() => onServiceInputModeChange('meanSpread')}
+                  onClick={() => onServiceInputTypeChange('rate')}
                   disabled={isLoading}
                   className={`py-2 rounded-xl text-xs font-bold transition-all ${
-                    serviceInputMode === 'meanSpread'
+                    serviceInputType === 'rate'
                       ? 'bg-brand-500 text-white shadow-md'
                       : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
                   } disabled:opacity-40 disabled:cursor-not-allowed`}
                 >
-                  Mean + Spread
+                  Rate (μ)
                 </button>
                 <button
                   type="button"
-                  onClick={() => onServiceInputModeChange('minMax')}
+                  onClick={() => onServiceInputTypeChange('mean')}
                   disabled={isLoading}
                   className={`py-2 rounded-xl text-xs font-bold transition-all ${
-                    serviceInputMode === 'minMax'
+                    serviceInputType === 'mean'
                       ? 'bg-brand-500 text-white shadow-md'
                       : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
                   } disabled:opacity-40 disabled:cursor-not-allowed`}
                 >
-                  Min + Max
+                  Mean Time
                 </button>
               </div>
 
-              {serviceInputMode === 'meanSpread' ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Service Time Unit
-                    </span>
+              <div>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    {serviceInputType === 'rate' ? 'Rate Unit' : 'Service Time Unit'}
+                  </span>
+                  <select
+                    value={serviceInputType === 'rate' ? serviceRateUnit : serviceTimeUnit}
+                    onChange={(e) =>
+                      serviceInputType === 'rate'
+                        ? onServiceRateUnitChange(e.target.value as TimeUnit)
+                        : onServiceTimeUnitChange(e.target.value as TimeUnit)
+                    }
+                    className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold cursor-pointer outline-none"
+                    disabled={isLoading}
+                  >
+                    <option value="seconds">Seconds</option>
+                    <option value="minutes">Minutes</option>
+                    <option value="hours">Hours</option>
+                  </select>
+                </div>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={serviceInputType === 'rate' ? serviceRateValue : serviceTime}
+                  onChange={(e) =>
+                    serviceInputType === 'rate'
+                      ? onServiceRateValueChange(e.target.value)
+                      : onServiceTimeChange(e.target.value)
+                  }
+                  className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700
+                           bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-900 dark:text-white
+                           focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none
+                           transition-all shadow-sm hover:shadow-md disabled:opacity-50 text-lg font-semibold"
+                  placeholder={serviceInputType === 'rate' ? 'Rate (e.g. 0.5)' : 'Mean time (e.g., 1.5)'}
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+
+              {/* Spread — only for M/G models in Mean Time mode */}
+              {isMgModel && serviceInputType === 'mean' && (
+                <div className="animate-slideUp pt-1">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Spread Type</span>
                     <select
-                      value={serviceTimeUnit}
-                      onChange={(e) => onServiceTimeUnitChange(e.target.value as TimeUnit)}
-                      className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold cursor-pointer outline-none"
-                      disabled={isLoading}
+                      value={serviceSpreadType}
+                      onChange={(e) => onServiceSpreadTypeChange(e.target.value as 'variance' | 'stdDev')}
+                      className="bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 rounded-lg px-2 py-1 text-xs font-bold cursor-pointer outline-none"
                     >
-                      <option value="seconds">Seconds</option>
-                      <option value="minutes">Minutes</option>
-                      <option value="hours">Hours</option>
+                      <option value="variance">Variance</option>
+                      <option value="stdDev">Standard Dev</option>
                     </select>
                   </div>
                   <input
                     type="number"
                     step="0.01"
-                    min="0.01"
-                    value={serviceTime}
-                    onChange={(e) => onServiceTimeChange(e.target.value)}
-                    className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 
+                    min="0"
+                    value={serviceSpreadValue}
+                    onChange={(e) => onServiceSpreadValueChange(e.target.value)}
+                    className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700
                              bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-900 dark:text-white
                              focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none
                              transition-all shadow-sm hover:shadow-md disabled:opacity-50 text-lg font-semibold"
-                    placeholder="Mean time (e.g., 1.5)"
+                    placeholder={serviceSpreadType === 'variance' ? 'Variance (e.g., 0.8)' : 'Std Dev (e.g., 0.9)'}
                     disabled={isLoading}
                     required
                   />
-
-                  {isMgModel && (
-                    <div className="animate-slideUp pt-2">
-                      <div className="flex items-center gap-2 mb-3">
-                         <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Spread Type</span>
-                         <select
-                           value={serviceSpreadType}
-                           onChange={(e) => onServiceSpreadTypeChange(e.target.value as 'variance'|'stdDev')}
-                           className="bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-800/50 rounded-lg px-2 py-1 text-xs font-bold cursor-pointer outline-none"
-                         >
-                           <option value="variance">Variance</option>
-                           <option value="stdDev">Standard Dev</option>
-                         </select>
-                      </div>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={serviceSpreadValue}
-                        onChange={(e) => onServiceSpreadValueChange(e.target.value)}
-                        className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 
-                                 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-900 dark:text-white
-                                 focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none
-                                 transition-all shadow-sm hover:shadow-md disabled:opacity-50 text-lg font-semibold"
-                        placeholder={serviceSpreadType === 'variance' ? 'Variance (e.g., 0.8)' : 'Std Dev (e.g., 0.9)'}
-                        disabled={isLoading}
-                        required
-                      />
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Service Time Unit
-                    </span>
-                    <select
-                      value={serviceTimeUnit}
-                      onChange={(e) => onServiceTimeUnitChange(e.target.value as TimeUnit)}
-                      className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold cursor-pointer outline-none"
-                      disabled={isLoading}
-                    >
-                      <option value="seconds">Seconds</option>
-                      <option value="minutes">Minutes</option>
-                      <option value="hours">Hours</option>
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      value={serviceMinTime}
-                      onChange={(e) => onServiceMinTimeChange(e.target.value)}
-                      className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 
-                             bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-900 dark:text-white
-                             focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none
-                             transition-all shadow-sm hover:shadow-md disabled:opacity-50 text-lg font-semibold"
-                      placeholder="Min (1.0)"
-                      disabled={isLoading}
-                      required
-                    />
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      value={serviceMaxTime}
-                      onChange={(e) => onServiceMaxTimeChange(e.target.value)}
-                      className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 
-                             bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-900 dark:text-white
-                             focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none
-                             transition-all shadow-sm hover:shadow-md disabled:opacity-50 text-lg font-semibold"
-                      placeholder="Max (2.0)"
-                      disabled={isLoading}
-                      required
-                    />
-                  </div>
                 </div>
               )}
             </div>
