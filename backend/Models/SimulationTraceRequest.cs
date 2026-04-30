@@ -20,4 +20,9 @@ public class SimulationTraceRequest
     /// Leave null for fresh randomness.
     /// </summary>
     public int? Seed { get; set; }
+
+    public string? Model { get; set; }
+
+    [Range(1, int.MaxValue, ErrorMessage = "Number of servers must be at least 1")]
+    public int Servers { get; set; } = 1;
 }

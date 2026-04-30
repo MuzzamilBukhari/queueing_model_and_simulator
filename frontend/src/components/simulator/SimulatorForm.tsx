@@ -9,6 +9,8 @@ interface SimulatorFormProps {
     mu: number;
     numCustomers: number;
     seed?: number;
+    model?: string;
+    servers?: number;
   }) => void;
   isLoading: boolean;
 }
@@ -17,35 +19,47 @@ export default function SimulatorForm({
   onSubmit,
   isLoading,
 }: SimulatorFormProps) {
-  const [lambda, setLambda] = useState("2.65");
-  const [mu, setMu] = useState("7.45");
+  const [model, setModel] = useState("M/M/1");
+  const [servers, setServers] = useState(1);
+  const [arrivalInputType, setArrivalInputType] = useState<"rate" | "mean">("rate");
+  const [arrivalValue, setArrivalValue] = useState("2.65");
+  const [serviceInputType, setServiceInputType] = useState<"rate" | "mean">("mean");
+  const [serviceValue, setServiceValue] = useState("7.45");
   const [numCustomers, setNumCustomers] = useState("8");
   const [seed, setSeed] = useState("");
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const parsedLambda = parseFloat(lambda);
-    const parsedMu = parseFloat(mu);
+    const parsedArrival = parseFloat(arrivalValue);
+    const parsedService = parseFloat(serviceValue);
     const parsedN = parseInt(numCustomers);
     const parsedSeed = seed.trim() !== "" ? parseInt(seed) : undefined;
 
-    if (isNaN(parsedLambda) || parsedLambda <= 0) return;
-    if (isNaN(parsedMu) || parsedMu <= 0) return;
+    if (isNaN(parsedArrival) || parsedArrival <= 0) return;
+    if (isNaN(parsedService) || parsedService <= 0) return;
     if (isNaN(parsedN) || parsedN < 1 || parsedN > 100) return;
 
+    const finalLambda = arrivalInputType === "rate" ? parsedArrival : 1 / parsedArrival;
+    const finalMu = serviceInputType === "mean" ? parsedService : 1 / parsedService;
+
     onSubmit({
-      lambda: parsedLambda,
-      mu: parsedMu,
+      lambda: finalLambda,
+      mu: finalMu,
       numCustomers: parsedN,
       seed: parsedSeed,
+      model,
+      servers,
     });
   };
 
   const isValid =
-    parseFloat(lambda) > 0 &&
-    parseFloat(mu) > 0 &&
+    parseFloat(arrivalValue) > 0 &&
+    parseFloat(serviceValue) > 0 &&
     parseInt(numCustomers) >= 1 &&
-    parseInt(numCustomers) <= 100;
+    parseInt(numCustomers) <= 100 &&
+    servers >= 1;
+
+  const isMultiServer = model === "M/M/s" || model === "M/G/s" || model === "G/G/s";
 
   return (
     <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl rounded-[2.5rem] shadow-[0_8px_40px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.3)] p-6 sm:p-10 border border-white/60 dark:border-slate-800/60">
@@ -56,57 +70,136 @@ export default function SimulatorForm({
         </div>
         <div>
           <h2 className="text-2xl sm:text-3xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-300 tracking-tight">
-            M/M/1 Simulator
+            Simulation Setup
           </h2>
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
-            Poisson arrivals · Exponential service · Single server FCFS
+            Configure your queueing model simulation parameters
           </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          {/* Lambda */}
+          
+          {/* Model Selection */}
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
-              Arrival Rate λ (customers / min)
+              Queueing Model
             </label>
-            <input
-              type="number"
-              step="any"
-              min="0.0001"
-              value={lambda}
-              onChange={(e) => setLambda(e.target.value)}
+            <select
+              value={model}
+              onChange={(e) => {
+                setModel(e.target.value);
+                if (!e.target.value.endsWith("/s") && servers !== 1) {
+                  setServers(1);
+                }
+              }}
               disabled={isLoading}
-              placeholder="e.g. 2.65"
               className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700
                          bg-white dark:bg-slate-800 text-slate-900 dark:text-white
                          focus:ring-2 focus:ring-brand-500 focus:border-transparent
-                         transition-all duration-200 disabled:opacity-50"
-            />
+                         transition-all duration-200 disabled:opacity-50 appearance-none"
+            >
+              <option value="M/M/1">M/M/1</option>
+              <option value="M/M/s">M/M/s</option>
+              <option value="M/G/1">M/G/1</option>
+              <option value="M/G/s">M/G/s</option>
+              <option value="G/G/1">G/G/1</option>
+              <option value="G/G/s">G/G/s</option>
+            </select>
           </div>
 
-          {/* Mu */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
-              Mean Service Time μ (minutes)
-            </label>
-            <input
-              type="number"
-              step="any"
-              min="0.0001"
-              value={mu}
-              onChange={(e) => setMu(e.target.value)}
-              disabled={isLoading}
-              placeholder="e.g. 7.45"
-              className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700
-                         bg-white dark:bg-slate-800 text-slate-900 dark:text-white
-                         focus:ring-2 focus:ring-brand-500 focus:border-transparent
-                         transition-all duration-200 disabled:opacity-50"
-            />
-            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-              Used as: &minus;μ × ln(U)
-            </p>
+          {/* Servers */}
+          {isMultiServer && (
+            <div className="animate-fadeIn">
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
+                Number of Servers (s)
+              </label>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={servers}
+                onChange={(e) => setServers(parseInt(e.target.value) || 1)}
+                disabled={isLoading}
+                className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700
+                           bg-white dark:bg-slate-800 text-slate-900 dark:text-white
+                           focus:ring-2 focus:ring-brand-500 focus:border-transparent
+                           transition-all duration-200 disabled:opacity-50"
+              />
+            </div>
+          )}
+
+          {/* Arrival Input */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Inter-Arrival Time
+              </label>
+            </div>
+            <div className="flex rounded-xl shadow-sm">
+              <select
+                value={arrivalInputType}
+                onChange={(e) => setArrivalInputType(e.target.value as "rate" | "mean")}
+                disabled={isLoading}
+                className="px-4 py-3 rounded-l-xl border border-r-0 border-slate-300 dark:border-slate-700
+                           bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300
+                           focus:ring-2 focus:ring-brand-500 focus:border-transparent focus:z-10
+                           transition-all duration-200 disabled:opacity-50 appearance-none font-medium text-sm"
+              >
+                <option value="rate">Rate (λ)</option>
+                <option value="mean">Mean Time</option>
+              </select>
+              <input
+                type="number"
+                step="any"
+                min="0.0001"
+                value={arrivalValue}
+                onChange={(e) => setArrivalValue(e.target.value)}
+                disabled={isLoading}
+                placeholder="e.g. 2.65"
+                className="flex-1 min-w-0 px-4 py-3 rounded-r-xl border border-slate-300 dark:border-slate-700
+                           bg-white dark:bg-slate-800 text-slate-900 dark:text-white
+                           focus:ring-2 focus:ring-brand-500 focus:border-transparent
+                           transition-all duration-200 disabled:opacity-50"
+              />
+            </div>
+          </div>
+
+          {/* Service Input */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Service Time
+              </label>
+            </div>
+            <div className="flex rounded-xl shadow-sm">
+              <select
+                value={serviceInputType}
+                onChange={(e) => setServiceInputType(e.target.value as "rate" | "mean")}
+                disabled={isLoading}
+                className="px-4 py-3 rounded-l-xl border border-r-0 border-slate-300 dark:border-slate-700
+                           bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300
+                           focus:ring-2 focus:ring-brand-500 focus:border-transparent focus:z-10
+                           transition-all duration-200 disabled:opacity-50 appearance-none font-medium text-sm"
+              >
+                <option value="rate">Rate (μ)</option>
+                <option value="mean">Mean Time</option>
+              </select>
+              <input
+                type="number"
+                step="any"
+                min="0.0001"
+                value={serviceValue}
+                onChange={(e) => setServiceValue(e.target.value)}
+                disabled={isLoading}
+                placeholder="e.g. 7.45"
+                className="flex-1 min-w-0 px-4 py-3 rounded-r-xl border border-slate-300 dark:border-slate-700
+                           bg-white dark:bg-slate-800 text-slate-900 dark:text-white
+                           focus:ring-2 focus:ring-brand-500 focus:border-transparent
+                           transition-all duration-200 disabled:opacity-50"
+              />
+            </div>
           </div>
 
           {/* N */}

@@ -808,9 +808,9 @@ export default function Home() {
 
               {simResults && (
                 <>
-                  <SimulationSummary results={simResults} />
-                  <GanttChart segments={simResults.ganttSegments} />
                   <TraceTable customers={simResults.customers} />
+                  <GanttChart segments={simResults.ganttSegments} />
+                  <SimulationSummary results={simResults} />
                   <CdfTable rows={simResults.cdfTable} lambda={simLambda} />
                 </>
               )}

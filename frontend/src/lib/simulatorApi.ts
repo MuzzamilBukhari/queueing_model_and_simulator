@@ -5,6 +5,8 @@ export interface SimulateRequest {
   mu: number;
   numCustomers: number;
   seed?: number;
+  model?: string;
+  servers?: number;
 }
 
 export interface CdfRow {
