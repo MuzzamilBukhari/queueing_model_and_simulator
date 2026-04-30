@@ -25,19 +25,16 @@ export default function SimulatorForm({
   const [arrivalValue, setArrivalValue] = useState("2.65");
   const [serviceInputType, setServiceInputType] = useState<"rate" | "mean">("mean");
   const [serviceValue, setServiceValue] = useState("7.45");
-  const [numCustomers, setNumCustomers] = useState("8");
-  const [seed, setSeed] = useState("");
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const parsedArrival = parseFloat(arrivalValue);
     const parsedService = parseFloat(serviceValue);
-    const parsedN = parseInt(numCustomers);
-    const parsedSeed = seed.trim() !== "" ? parseInt(seed) : undefined;
+    const parsedN = 8; // Default hardcoded since input is removed
+    const parsedSeed = undefined;
 
     if (isNaN(parsedArrival) || parsedArrival <= 0) return;
     if (isNaN(parsedService) || parsedService <= 0) return;
-    if (isNaN(parsedN) || parsedN < 1 || parsedN > 100) return;
 
     const finalLambda = arrivalInputType === "rate" ? parsedArrival : 1 / parsedArrival;
     const finalMu = serviceInputType === "mean" ? parsedService : 1 / parsedService;
@@ -55,8 +52,6 @@ export default function SimulatorForm({
   const isValid =
     parseFloat(arrivalValue) > 0 &&
     parseFloat(serviceValue) > 0 &&
-    parseInt(numCustomers) >= 1 &&
-    parseInt(numCustomers) <= 100 &&
     servers >= 1;
 
   const isMultiServer = model === "M/M/s" || model === "M/G/s" || model === "G/G/s";
@@ -200,53 +195,6 @@ export default function SimulatorForm({
                            transition-all duration-200 disabled:opacity-50"
               />
             </div>
-          </div>
-
-          {/* N */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
-              Number of Customers N
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="100"
-              step="1"
-              value={numCustomers}
-              onChange={(e) => setNumCustomers(e.target.value)}
-              disabled={isLoading}
-              placeholder="e.g. 8"
-              className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700
-                         bg-white dark:bg-slate-800 text-slate-900 dark:text-white
-                         focus:ring-2 focus:ring-brand-500 focus:border-transparent
-                         transition-all duration-200 disabled:opacity-50"
-            />
-            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-              Max 100 customers
-            </p>
-          </div>
-
-          {/* Seed */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
-              Seed (optional)
-            </label>
-            <input
-              type="number"
-              step="1"
-              value={seed}
-              onChange={(e) => setSeed(e.target.value)}
-              disabled={isLoading}
-              placeholder="Leave blank for random"
-              className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700
-                         bg-white dark:bg-slate-800 text-slate-900 dark:text-white
-                         focus:ring-2 focus:ring-brand-500 focus:border-transparent
-                         transition-all duration-200 disabled:opacity-50"
-            />
-            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-              Fix seed to reproduce same results
-            </p>
-          </div>
         </div>
 
         <button

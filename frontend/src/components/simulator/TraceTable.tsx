@@ -31,8 +31,8 @@ export default function TraceTable({ customers }: TraceTableProps) {
           <thead>
             <tr className="bg-slate-50/80 dark:bg-slate-800/60">
               <th className={thLeft}>S.No</th>
+              <th className={th}>Cumulative Prob</th>
               <th className={th}>Cum Prob Lookup</th>
-              <th className={th}>Cummulative Prob</th>
               <th className={th}>No. of Min (k)</th>
               <th className={th}>Inter Arrival</th>
               <th className={th}>Arrival Time</th>
@@ -55,9 +55,9 @@ export default function TraceTable({ customers }: TraceTableProps) {
                 }
               >
                 <td className={tdLeft}>C{c.no}</td>
-                <td className={td}>{c.cumProbLookup.toFixed(4)}</td>
-                <td className={td}>{c.cumulativeProbability.toFixed(4)}</td>
-                <td className={td}>{c.cdfK}</td>
+                <td className={td}>{c.cumulativeProbability.toFixed(5)}</td>
+                <td className={td}>{c.cumProbLookup.toFixed(5)}</td>
+                <td className={td}>{idx}</td>
                 <td className={`${td} font-semibold`}>{c.interArrival}</td>
                 <td className={td}>{c.arrivalTime}</td>
                 <td className={`${td} text-violet-600 dark:text-violet-400`}>{c.serviceTime}</td>

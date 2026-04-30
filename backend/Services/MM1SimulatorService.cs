@@ -126,12 +126,12 @@ public class MM1SimulatorService
             CdfTable = cdfTable,
             Customers = customers,
             GanttSegments = ganttSegments,
-            AvgInterarrivalTime = Math.Round(avgInterarrival, 4),
-            AvgServiceTime = Math.Round(avgService, 4),
-            AvgWaitTime = Math.Round(avgWait, 4),
-            AvgResponseTime = Math.Round(avgResponse, 4),
-            AvgTurnaroundTime = Math.Round(avgTurnaround, 4),
-            ServerUtilization = Math.Round(serverUtilization, 4)
+            AvgInterarrivalTime = Math.Round(avgInterarrival, 5),
+            AvgServiceTime = Math.Round(avgService, 5),
+            AvgWaitTime = Math.Round(avgWait, 5),
+            AvgResponseTime = Math.Round(avgResponse, 5),
+            AvgTurnaroundTime = Math.Round(avgTurnaround, 5),
+            ServerUtilization = Math.Round(serverUtilization, 5)
         };
     }
 
@@ -147,22 +147,26 @@ public class MM1SimulatorService
         double cumulative = 0;
         int k = 0;
 
-        // Build until CDF reaches ~1 (or at least enough rows for lookup)
-        while (cumulative < 0.9999 || k <= 1)
+        // Build until CDF reaches 1.00000 at 5 decimal places
+        while (Math.Round(cumulative, 5) < 1.0)
         {
-            double prevCumulative = cumulative;
-            cumulative = Math.Min(1.0, cumulative + pmf);
+            double prevCumulative = Math.Round(cumulative, 5);
+            cumulative += pmf;
+            double currentCumulative = Math.Round(cumulative, 5);
+            if (currentCumulative > 1.0) currentCumulative = 1.0;
+
+            double lookup = prevCumulative == 0 ? 0.00001 : Math.Round(prevCumulative + 0.00001, 5);
 
             table.Add(new CdfRow
             {
                 K = k,
-                Pmf = Math.Round(pmf, 6),
-                CumProbLookup = Math.Round(prevCumulative, 6),
-                CumulativeProbability = Math.Round(cumulative, 6)
+                Pmf = Math.Round(pmf, 5),
+                CumProbLookup = lookup,
+                CumulativeProbability = currentCumulative
             });
 
             k++;
-            pmf = pmf * lambda / k; // recurrence: P(X=k) = P(X=k-1) * λ / k
+            pmf = pmf * lambda / k;
         }
 
         return table;

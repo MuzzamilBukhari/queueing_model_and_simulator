@@ -47,10 +47,10 @@ export default function CdfTable({ rows, lambda }: CdfTableProps) {
                   P(X = k)
                 </th>
                 <th className="px-4 py-3 text-right font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Cum Prob Lookup
+                  Cumulative Probability
                 </th>
                 <th className="px-4 py-3 text-right font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Cummulative Probability
+                  Cum Prob Lookup
                 </th>
               </tr>
             </thead>
@@ -68,13 +68,13 @@ export default function CdfTable({ rows, lambda }: CdfTableProps) {
                     {row.k}
                   </td>
                   <td className="px-4 py-2.5 text-right text-slate-600 dark:text-slate-300 font-mono">
-                    {row.pmf.toFixed(4)}
+                    {row.pmf.toFixed(5)}
                   </td>
                   <td className="px-4 py-2.5 text-right text-slate-600 dark:text-slate-300 font-mono">
-                    {row.cumProbLookup.toFixed(4)}
+                    {row.cumulativeProbability.toFixed(5)}
                   </td>
                   <td className="px-4 py-2.5 text-right text-slate-600 dark:text-slate-300 font-mono">
-                    {row.cumulativeProbability.toFixed(4)}
+                    {row.cumProbLookup.toFixed(5)}
                   </td>
                 </tr>
               ))}
