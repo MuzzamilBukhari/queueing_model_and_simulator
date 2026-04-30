@@ -39,6 +39,9 @@ public class QueueSimulationRequest : IValidatableObject
     [Range(0, double.MaxValue, ErrorMessage = "Cs must be 0 or greater")]
     public double? Cs { get; set; }
 
+    [Range(0, double.MaxValue, ErrorMessage = "Arrival variance must be 0 or greater")]
+    public double? ArrivalVariance { get; set; }
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         var hasArrivalRate = ArrivalRate.HasValue;

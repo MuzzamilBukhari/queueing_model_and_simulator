@@ -72,8 +72,13 @@ function resolveManualModel(selectedModel: string, servers: number): string {
 export default function Home() {
   const [activeTab, setActiveTab] = useState<AppTab>("home");
   const [mode, setMode] = useState<"manual" | "auto">("manual");
-  const [manualServerMode, setManualServerMode] = useState<"single" | "multi">("single");
+  const [manualServerMode, setManualServerMode] = useState<"single" | "multi">(
+    "single",
+  );
   const [selectedModel, setSelectedModel] = useState("M/M/1");
+  const [arrivalProcessType, setArrivalProcessType] = useState<
+    "arrival" | "interArrival"
+  >("arrival");
   const [arrivalDistribution, setArrivalDistribution] = useState("Poisson");
   const [serviceDistribution, setServiceDistribution] = useState("Exponential");
   const [arrivalInputType, setArrivalInputType] = useState<
@@ -81,7 +86,9 @@ export default function Home() {
   >("rate");
   const [arrivalTimeUnit, setArrivalTimeUnit] = useState<TimeUnit>("minutes");
   const [arrivalValue, setArrivalValue] = useState("");
-  const [serviceInputType, setServiceInputType] = useState<"rate" | "mean">("mean");
+  const [serviceInputType, setServiceInputType] = useState<"rate" | "mean">(
+    "mean",
+  );
   const [serviceRateValue, setServiceRateValue] = useState("");
   const [serviceRateUnit, setServiceRateUnit] = useState<TimeUnit>("minutes");
   const [serviceTimeUnit, setServiceTimeUnit] = useState<TimeUnit>("minutes");
@@ -97,14 +104,22 @@ export default function Home() {
   const [serviceMaxTime, setServiceMaxTime] = useState("");
   const [servers, setServers] = useState(1);
   // G/G/1 arrival spread state
-  const [arrivalInputMode, setArrivalInputMode] = useState<"meanSpread" | "minMax">("meanSpread");
-  const [arrivalSpreadType, setArrivalSpreadType] = useState<"variance" | "stdDev">("variance");
+  const [arrivalInputMode, setArrivalInputMode] = useState<
+    "meanSpread" | "minMax"
+  >("meanSpread");
+  const [arrivalSpreadType, setArrivalSpreadType] = useState<
+    "variance" | "stdDev"
+  >("variance");
   const [arrivalSpreadValue, setArrivalSpreadValue] = useState("");
   const [arrivalMinTime, setArrivalMinTime] = useState("");
   const [arrivalMaxTime, setArrivalMaxTime] = useState("");
   // G/G/1 service spread state (replaces ca/cs direct entry)
-  const [ggServiceInputMode, setGgServiceInputMode] = useState<"meanSpread" | "minMax">("meanSpread");
-  const [ggServiceSpreadType, setGgServiceSpreadType] = useState<"variance" | "stdDev">("variance");
+  const [ggServiceInputMode, setGgServiceInputMode] = useState<
+    "meanSpread" | "minMax"
+  >("meanSpread");
+  const [ggServiceSpreadType, setGgServiceSpreadType] = useState<
+    "variance" | "stdDev"
+  >("variance");
   const [ggServiceSpreadValue, setGgServiceSpreadValue] = useState("");
   const [ggServiceMinTime, setGgServiceMinTime] = useState("");
   const [ggServiceMaxTime, setGgServiceMaxTime] = useState("");
@@ -120,35 +135,20 @@ export default function Home() {
 
   const handleModeChange = (nextMode: "manual" | "auto") => {
     setMode(nextMode);
-
-    if (nextMode !== "auto") {
-      return;
-    }
-
-    if (arrivalDistribution === "Poisson") {
-      setArrivalInputType("rate");
-      return;
-    }
-
-    if (arrivalDistribution === "Exponential") {
-      setArrivalInputType("meanInterArrival");
-    }
   };
 
   const handleArrivalDistributionChange = (value: string) => {
     setArrivalDistribution(value);
+  };
 
-    if (mode !== "auto") {
-      return;
-    }
-
-    if (value === "Poisson") {
-      setArrivalInputType("rate");
-      return;
-    }
-
-    if (value === "Exponential") {
-      setArrivalInputType("meanInterArrival");
+  const handleArrivalProcessTypeChange = (
+    value: "arrival" | "interArrival",
+  ) => {
+    setArrivalProcessType(value);
+    if (value === "arrival") {
+      setArrivalDistribution("Poisson");
+    } else {
+      setArrivalDistribution("Exponential");
     }
   };
 
@@ -213,28 +213,35 @@ export default function Home() {
       return;
     }
 
-    if (!arrivalValue) {
-      toast.error("Please fill in all required fields");
-      return;
+    const arrIsUniform = mode === "auto" && arrivalDistribution === "Uniform";
+    const effArrMode = arrivalInputMode;
+
+    if (!effectiveModel.startsWith("G/G/") || effArrMode !== "minMax") {
+      if (!arrivalValue) {
+        toast.error("Please fill in all required fields");
+        return;
+      }
     }
 
     const parsedArrival = parseFloat(arrivalValue);
     const parsedServiceRate =
       serviceInputType === "rate" ? parseFloat(serviceRateValue) : undefined;
     const parsedServiceTime =
-      serviceInputType === "mean" && serviceInputMode === "meanSpread"
-        ? parseFloat(serviceTime)
-        : undefined;
+      serviceInputMode === "meanSpread" ? parseFloat(serviceTime) : undefined;
     const parsedServiceMin =
-      serviceInputType === "mean" && serviceInputMode === "minMax"
-        ? parseFloat(serviceMinTime)
-        : undefined;
+      serviceInputMode === "minMax" ? parseFloat(serviceMinTime) : undefined;
     const parsedServiceMax =
-      serviceInputType === "mean" && serviceInputMode === "minMax"
-        ? parseFloat(serviceMaxTime)
-        : undefined;
+      serviceInputMode === "minMax" ? parseFloat(serviceMaxTime) : undefined;
 
-    if (parsedArrival <= 0 || servers < 1) {
+    if (
+      (!effectiveModel.startsWith("G/G/") || effArrMode !== "minMax") &&
+      parsedArrival <= 0
+    ) {
+      toast.error("Inputs must be positive values");
+      return;
+    }
+
+    if (servers < 1) {
       toast.error("Inputs must be positive values");
       return;
     }
@@ -246,44 +253,58 @@ export default function Home() {
       selectedModel !== "M/G/s" &&
       selectedModel !== "G/G/s"
     ) {
-      toast.error(
-        "Unsupported model selected for multi-server mode.",
-      );
+      toast.error("Unsupported model selected for multi-server mode.");
       return;
     }
 
-    if (serviceInputType === "rate") {
-      if (!serviceRateValue || !parsedServiceRate || parsedServiceRate <= 0) {
-        toast.error("Please provide a valid positive service rate (μ).");
-        return;
-      }
-    } else if (serviceInputMode === "meanSpread") {
-      if (!serviceTime || !parsedServiceTime || parsedServiceTime <= 0) {
-        toast.error("Please provide a valid mean service time.");
-        return;
-      }
-    } else {
-      if (
-        !serviceMinTime ||
-        !serviceMaxTime ||
-        !parsedServiceMin ||
-        !parsedServiceMax ||
-        parsedServiceMin <= 0 ||
-        parsedServiceMax <= 0
-      ) {
-        toast.error("Please provide valid positive min and max service times.");
-        return;
-      }
+    const isMgUniform =
+      effectiveModel.startsWith("M/G/") &&
+      mode === "auto" &&
+      serviceDistribution === "Uniform";
+    const effMgSvcMode = serviceInputMode;
 
-      if (parsedServiceMax < parsedServiceMin) {
-        toast.error(
-          "Maximum service time must be greater than or equal to minimum service time.",
-        );
-        return;
+    if (!effectiveModel.startsWith("G/G/")) {
+      if (effectiveModel.startsWith("M/G/") && effMgSvcMode === "minMax") {
+        if (
+          !serviceMinTime ||
+          !serviceMaxTime ||
+          !parsedServiceMin ||
+          !parsedServiceMax ||
+          parsedServiceMin <= 0 ||
+          parsedServiceMax <= 0
+        ) {
+          toast.error(
+            "Please provide valid positive min and max service times.",
+          );
+          return;
+        }
+
+        if (parsedServiceMax < parsedServiceMin) {
+          toast.error(
+            "Maximum service time must be greater than or equal to minimum service time.",
+          );
+          return;
+        }
+      } else {
+        if (serviceInputType === "rate") {
+          if (
+            !serviceRateValue ||
+            !parsedServiceRate ||
+            parsedServiceRate <= 0
+          ) {
+            toast.error("Please provide a valid positive service rate (μ).");
+            return;
+          }
+        } else {
+          if (!serviceTime || !parsedServiceTime || parsedServiceTime <= 0) {
+            toast.error("Please provide a valid mean service time.");
+            return;
+          }
+        }
       }
     }
 
-    if (effectiveModel.startsWith("M/G/") && serviceInputType === "mean" && serviceInputMode === "meanSpread") {
+    if (effectiveModel.startsWith("M/G/") && effMgSvcMode === "meanSpread") {
       if (!serviceSpreadValue || parseFloat(serviceSpreadValue) < 0) {
         toast.error(
           "Please provide a valid non-negative service variance or standard deviation for M/G models.",
@@ -295,27 +316,41 @@ export default function Home() {
     if (effectiveModel.startsWith("G/G/")) {
       const arrIsUniform = mode === "auto" && arrivalDistribution === "Uniform";
       const svcIsUniform = mode === "auto" && serviceDistribution === "Uniform";
-      const effArrMode = arrIsUniform ? "minMax" : arrivalInputMode;
-      const effSvcMode = svcIsUniform ? "minMax" : ggServiceInputMode;
+      const effArrMode = arrivalInputMode;
+      const effSvcMode = ggServiceInputMode;
       if (effArrMode === "minMax") {
-        if (!arrivalMinTime || !arrivalMaxTime || parseFloat(arrivalMinTime) <= 0 || parseFloat(arrivalMaxTime) <= 0) {
+        if (
+          !arrivalMinTime ||
+          !arrivalMaxTime ||
+          parseFloat(arrivalMinTime) <= 0 ||
+          parseFloat(arrivalMaxTime) <= 0
+        ) {
           toast.error("Please provide valid min and max inter-arrival times.");
           return;
         }
       } else {
         if (!arrivalSpreadValue || parseFloat(arrivalSpreadValue) < 0) {
-          toast.error("Please provide a valid non-negative arrival spread (variance or std dev) for G/G models.");
+          toast.error(
+            "Please provide a valid non-negative arrival spread (variance or std dev) for G/G models.",
+          );
           return;
         }
       }
       if (effSvcMode === "minMax") {
-        if (!ggServiceMinTime || !ggServiceMaxTime || parseFloat(ggServiceMinTime) <= 0 || parseFloat(ggServiceMaxTime) <= 0) {
+        if (
+          !ggServiceMinTime ||
+          !ggServiceMaxTime ||
+          parseFloat(ggServiceMinTime) <= 0 ||
+          parseFloat(ggServiceMaxTime) <= 0
+        ) {
           toast.error("Please provide valid min and max service times.");
           return;
         }
       } else {
         if (!ggServiceSpreadValue || parseFloat(ggServiceSpreadValue) < 0) {
-          toast.error("Please provide a valid non-negative service spread (variance or std dev) for G/G models.");
+          toast.error(
+            "Please provide a valid non-negative service spread (variance or std dev) for G/G models.",
+          );
           return;
         }
       }
@@ -326,32 +361,42 @@ export default function Home() {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5196";
 
-      const isMgUniform = effectiveModel.startsWith("M/G/") && mode === "auto" && serviceDistribution === "Uniform";
+      const isMgUniform =
+        effectiveModel.startsWith("M/G/") &&
+        mode === "auto" &&
+        serviceDistribution === "Uniform";
       // When rate (μ) is entered directly, convert to service time in minutes: 1 / (rate per minute)
       const normalizedServiceTime =
         serviceInputType === "rate" && parsedServiceRate
           ? 1 / convertRateToPerMinute(parsedServiceRate, serviceRateUnit)
-          : serviceInputType === "mean" && !isMgUniform && serviceInputMode === "meanSpread" && parsedServiceTime
+          : !isMgUniform &&
+              serviceInputMode === "meanSpread" &&
+              parsedServiceTime
             ? convertDurationToMinutes(parsedServiceTime, serviceTimeUnit)
             : undefined;
       const normalizedServiceMin =
         isMgUniform && serviceMinTime
-          ? convertDurationToMinutes(parseFloat(serviceMinTime), serviceTimeUnit)
-          : serviceInputType === "mean" && serviceInputMode === "minMax" && parsedServiceMin
+          ? convertDurationToMinutes(
+              parseFloat(serviceMinTime),
+              serviceTimeUnit,
+            )
+          : serviceInputMode === "minMax" && parsedServiceMin
             ? convertDurationToMinutes(parsedServiceMin, serviceTimeUnit)
             : undefined;
       const normalizedServiceMax =
         isMgUniform && serviceMaxTime
-          ? convertDurationToMinutes(parseFloat(serviceMaxTime), serviceTimeUnit)
-          : serviceInputType === "mean" && serviceInputMode === "minMax" && parsedServiceMax
+          ? convertDurationToMinutes(
+              parseFloat(serviceMaxTime),
+              serviceTimeUnit,
+            )
+          : serviceInputMode === "minMax" && parsedServiceMax
             ? convertDurationToMinutes(parsedServiceMax, serviceTimeUnit)
             : undefined;
       const spreadValue =
         effectiveModel.startsWith("M/G/") &&
-          !isMgUniform &&
-          serviceInputType === "mean" &&
-          serviceInputMode === "meanSpread" &&
-          serviceSpreadValue
+        !isMgUniform &&
+        serviceInputMode === "meanSpread" &&
+        serviceSpreadValue
           ? parseFloat(serviceSpreadValue)
           : undefined;
       const normalizedVariance =
@@ -367,42 +412,74 @@ export default function Home() {
       let computedCa: number | undefined;
       let computedCs: number | undefined;
       if (effectiveModel.startsWith("G/G/")) {
-        const arrIsUniform = mode === "auto" && arrivalDistribution === "Uniform";
-        const svcIsUniform = mode === "auto" && serviceDistribution === "Uniform";
+        const arrIsUniform =
+          mode === "auto" && arrivalDistribution === "Uniform";
+        const svcIsUniform =
+          mode === "auto" && serviceDistribution === "Uniform";
         const effArrMode = arrIsUniform ? "minMax" : arrivalInputMode;
         const effSvcMode = svcIsUniform ? "minMax" : ggServiceInputMode;
         // Arrival Ca²
         if (effArrMode === "minMax") {
-          const aMin = convertDurationToMinutes(parseFloat(arrivalMinTime), arrivalTimeUnit);
-          const aMax = convertDurationToMinutes(parseFloat(arrivalMaxTime), arrivalTimeUnit);
+          const aMin = convertDurationToMinutes(
+            parseFloat(arrivalMinTime),
+            arrivalTimeUnit,
+          );
+          const aMax = convertDurationToMinutes(
+            parseFloat(arrivalMaxTime),
+            arrivalTimeUnit,
+          );
           const aMean = (aMin + aMax) / 2.0;
           const aVar = Math.pow(aMax - aMin, 2) / 12.0;
           computedCa = aVar / Math.pow(aMean, 2);
         } else {
           const arrSpreadVal = parseFloat(arrivalSpreadValue);
-          const aMean = arrivalInputType === "rate"
-            ? 1 / convertRateToPerMinute(parseFloat(arrivalValue), arrivalTimeUnit)
-            : convertDurationToMinutes(parseFloat(arrivalValue), arrivalTimeUnit);
-          const aVar = arrivalSpreadType === "variance"
-            ? arrSpreadVal * Math.pow(minutesPerUnit[arrivalTimeUnit], 2)
-            : Math.pow(arrSpreadVal * minutesPerUnit[arrivalTimeUnit], 2);
+          const aMean =
+            arrivalInputType === "rate"
+              ? 1 /
+                convertRateToPerMinute(
+                  parseFloat(arrivalValue),
+                  arrivalTimeUnit,
+                )
+              : convertDurationToMinutes(
+                  parseFloat(arrivalValue),
+                  arrivalTimeUnit,
+                );
+          const aVar =
+            arrivalSpreadType === "variance"
+              ? arrSpreadVal * Math.pow(minutesPerUnit[arrivalTimeUnit], 2)
+              : Math.pow(arrSpreadVal * minutesPerUnit[arrivalTimeUnit], 2);
           computedCa = aVar / Math.pow(aMean, 2);
         }
         // Service Cs²
         if (effSvcMode === "minMax") {
-          const sMin = convertDurationToMinutes(parseFloat(ggServiceMinTime), serviceTimeUnit);
-          const sMax = convertDurationToMinutes(parseFloat(ggServiceMaxTime), serviceTimeUnit);
+          const sMin = convertDurationToMinutes(
+            parseFloat(ggServiceMinTime),
+            serviceTimeUnit,
+          );
+          const sMax = convertDurationToMinutes(
+            parseFloat(ggServiceMaxTime),
+            serviceTimeUnit,
+          );
           const sMean = (sMin + sMax) / 2.0;
           const sVar = Math.pow(sMax - sMin, 2) / 12.0;
           computedCs = sVar / Math.pow(sMean, 2);
         } else {
           const svcSpreadVal = parseFloat(ggServiceSpreadValue);
-          const sMean = serviceInputType === "rate"
-            ? 1 / convertRateToPerMinute(parseFloat(serviceRateValue), serviceRateUnit)
-            : convertDurationToMinutes(parseFloat(serviceTime), serviceTimeUnit);
-          const sVar = ggServiceSpreadType === "variance"
-            ? svcSpreadVal * Math.pow(minutesPerUnit[serviceTimeUnit], 2)
-            : Math.pow(svcSpreadVal * minutesPerUnit[serviceTimeUnit], 2);
+          const sMean =
+            serviceInputType === "rate"
+              ? 1 /
+                convertRateToPerMinute(
+                  parseFloat(serviceRateValue),
+                  serviceRateUnit,
+                )
+              : convertDurationToMinutes(
+                  parseFloat(serviceTime),
+                  serviceTimeUnit,
+                );
+          const sVar =
+            ggServiceSpreadType === "variance"
+              ? svcSpreadVal * Math.pow(minutesPerUnit[serviceTimeUnit], 2)
+              : Math.pow(svcSpreadVal * minutesPerUnit[serviceTimeUnit], 2);
           computedCs = sVar / Math.pow(sMean, 2);
         }
       }
@@ -426,35 +503,60 @@ export default function Home() {
         arrivalDistribution: mode === "auto" ? arrivalDistribution : undefined,
         serviceDistribution: mode === "auto" ? serviceDistribution : undefined,
         serviceTime:
-          (!isMgUniform && serviceInputMode === "meanSpread") ? normalizedServiceTime : undefined,
+          serviceInputMode === "meanSpread" ? normalizedServiceTime : undefined,
         serviceMinTime:
-          (isMgUniform || serviceInputMode === "minMax") ? normalizedServiceMin : undefined,
+          serviceInputMode === "minMax" ? normalizedServiceMin : undefined,
         serviceMaxTime:
-          (isMgUniform || serviceInputMode === "minMax") ? normalizedServiceMax : undefined,
+          serviceInputMode === "minMax" ? normalizedServiceMax : undefined,
         servers,
         variance:
           effectiveModel.startsWith("M/G/") &&
-            serviceInputMode === "meanSpread" &&
-            serviceSpreadType === "variance"
+          serviceInputMode === "meanSpread" &&
+          serviceSpreadType === "variance"
             ? normalizedVariance
             : undefined,
         serviceStdDev:
           effectiveModel.startsWith("M/G/") &&
-            serviceInputMode === "meanSpread" &&
-            serviceSpreadType === "stdDev"
+          serviceInputMode === "meanSpread" &&
+          serviceSpreadType === "stdDev"
             ? normalizedStdDev
             : undefined,
         ca: effectiveModel.startsWith("G/G/") ? computedCa : undefined,
         cs: effectiveModel.startsWith("G/G/") ? computedCs : undefined,
       };
 
-      if (arrivalInputType === "rate") {
-        payload.arrivalRate = convertRateToPerMinute(parsedArrival, arrivalTimeUnit);
+      if (effectiveModel.startsWith("G/G/") && effArrMode === "minMax") {
+        const aMin = convertDurationToMinutes(
+          parseFloat(arrivalMinTime),
+          arrivalTimeUnit,
+        );
+        const aMax = convertDurationToMinutes(
+          parseFloat(arrivalMaxTime),
+          arrivalTimeUnit,
+        );
+        payload.meanInterArrivalTime = (aMin + aMax) / 2.0;
+      } else if (arrivalInputType === "rate") {
+        payload.arrivalRate = convertRateToPerMinute(
+          parsedArrival,
+          arrivalTimeUnit,
+        );
       } else {
         payload.meanInterArrivalTime = convertDurationToMinutes(
           parsedArrival,
           arrivalTimeUnit,
         );
+      }
+
+      if (effectiveModel.startsWith("G/G/") && effMgSvcMode === "minMax") {
+        const sMin = convertDurationToMinutes(
+          parseFloat(ggServiceMinTime),
+          serviceTimeUnit,
+        );
+        const sMax = convertDurationToMinutes(
+          parseFloat(ggServiceMaxTime),
+          serviceTimeUnit,
+        );
+        payload.serviceTime = (sMin + sMax) / 2.0;
       }
 
       const response = await fetch(`${apiUrl}/api/simulation/calculate`, {
@@ -637,6 +739,8 @@ export default function Home() {
                 onManualServerModeChange={handleManualServerModeChange}
                 selectedModel={selectedModel}
                 onSelectedModelChange={setSelectedModel}
+                arrivalProcessType={arrivalProcessType}
+                onArrivalProcessTypeChange={handleArrivalProcessTypeChange}
                 arrivalDistribution={arrivalDistribution}
                 serviceDistribution={serviceDistribution}
                 onArrivalDistributionChange={handleArrivalDistributionChange}

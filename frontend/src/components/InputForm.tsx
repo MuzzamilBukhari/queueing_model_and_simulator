@@ -12,6 +12,8 @@ interface InputFormProps {
   onManualServerModeChange: (value: 'single' | 'multi') => void;
   selectedModel: string;
   onSelectedModelChange: (model: string) => void;
+  arrivalProcessType: "arrival" | "interArrival";
+  onArrivalProcessTypeChange: (value: "arrival" | "interArrival") => void;
   arrivalDistribution: string;
   serviceDistribution: string;
   onArrivalDistributionChange: (value: string) => void;
@@ -78,6 +80,8 @@ export default function InputForm({
   onManualServerModeChange,
   selectedModel,
   onSelectedModelChange,
+  arrivalProcessType,
+  onArrivalProcessTypeChange,
   arrivalDistribution,
   serviceDistribution,
   onArrivalDistributionChange,
@@ -140,26 +144,22 @@ export default function InputForm({
   const isGgModel = effectiveModel.startsWith('G/G/');
   const arrIsUniform = mode === 'auto' && arrivalDistribution === 'Uniform';
   const svcIsUniform = mode === 'auto' && serviceDistribution === 'Uniform';
-  // Effective modes: auto-Uniform forces minMax, otherwise use manual toggle
-  const effMgSvcMode = svcIsUniform ? 'minMax' : serviceInputMode;
-  const effArrMode = arrIsUniform ? 'minMax' : arrivalInputMode;
-  const effGgSvcMode = svcIsUniform ? 'minMax' : ggServiceInputMode;
-  const forceArrivalInputType =
-    mode === 'auto' && arrivalDistribution === 'Poisson'
-      ? 'rate'
-      : mode === 'auto' && arrivalDistribution === 'Exponential'
-        ? 'meanInterArrival'
-        : null;
+  
+  // Use the manual toggle state for all modes
+  const effMgSvcMode = serviceInputMode;
+  const effArrMode = arrivalInputMode;
+  const effGgSvcMode = ggServiceInputMode;
 
-  const mgSpreadValid = isMgModel && serviceInputType === 'mean'
+  const mgSpreadValid = isMgModel
     ? (effMgSvcMode === 'minMax'
         ? Boolean(serviceMinTime && serviceMaxTime && parseFloat(serviceMinTime) > 0 && parseFloat(serviceMaxTime) > 0)
         : Boolean(serviceSpreadValue && parseFloat(serviceSpreadValue) >= 0))
     : true;
 
-  const serviceValid =
-    serviceInputType === 'rate'
-      ? Boolean(serviceRateValue && parseFloat(serviceRateValue) > 0)
+  const serviceValid = (isMgModel && effMgSvcMode === 'minMax') || (isGgModel && effGgSvcMode === 'minMax')
+    ? true // Min/Max handled strictly by mgSpreadValid/ggServiceValid respectively
+    : serviceInputType === 'rate'
+      ? Boolean(serviceRateValue && parseFloat(serviceRateValue) > 0 && mgSpreadValid)
       : Boolean(serviceTime && parseFloat(serviceTime) > 0 && mgSpreadValid);
 
   const ggArrivalValid = isGgModel
@@ -175,8 +175,9 @@ export default function InputForm({
     : true;
 
   const baseValid =
-    arrivalValue &&
-    parseFloat(arrivalValue) > 0 &&
+    (isGgModel && effArrMode === 'minMax'
+      ? ggArrivalValid
+      : Boolean(arrivalValue && parseFloat(arrivalValue) > 0 && ggArrivalValid)) &&
     serviceValid &&
     servers >= 1;
 
@@ -300,25 +301,53 @@ export default function InputForm({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                  Arrival Distribution
-                </label>
-                <select
-                  value={arrivalDistribution}
-                  onChange={(e) => onArrivalDistributionChange(e.target.value)}
-                  className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 
-                         bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-900 dark:text-white
-                         focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none
-                         transition-all shadow-sm hover:shadow-md cursor-pointer"
-                >
-                  <option value="" disabled>Choose...</option>
-                  <option value="Poisson">Poisson (M)</option>
-                  <option value="Exponential">Exponential (M)</option>
-                  <option value="Uniform">Uniform (G)</option>
-                  <option value="Normal">Normal (G)</option>
-                  <option value="Gamma">Gamma (G)</option>
-                </select>
+              <div className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    Arrival Process Type
+                  </label>
+                  <select
+                    value={arrivalProcessType}
+                    onChange={(e) => onArrivalProcessTypeChange(e.target.value as "arrival" | "interArrival")}
+                    className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 
+                           bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-900 dark:text-white
+                           focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none
+                           transition-all shadow-sm hover:shadow-md cursor-pointer"
+                  >
+                    <option value="arrival">Arrival Distribution</option>
+                    <option value="interArrival">Inter-Arrival Distribution</option>
+                  </select>
+                </div>
+                {arrivalProcessType === "interArrival" ? (
+                  <div className="animate-slideUp">
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                      Distribution
+                    </label>
+                    <select
+                      value={arrivalDistribution}
+                      onChange={(e) => onArrivalDistributionChange(e.target.value)}
+                      className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 
+                             bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-900 dark:text-white
+                             focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none
+                             transition-all shadow-sm hover:shadow-md cursor-pointer"
+                    >
+                      <option value="" disabled>Choose...</option>
+                      <option value="Exponential">Exponential (M)</option>
+                      <option value="Uniform">Uniform (G)</option>
+                      <option value="Normal">Normal (G)</option>
+                      <option value="Gamma">Gamma (G)</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div className="animate-slideUp">
+                    <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 opacity-60">
+                      Distribution
+                    </label>
+                    <div className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/50 text-slate-500 font-semibold cursor-not-allowed">
+                      Poisson (M)
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
@@ -346,97 +375,125 @@ export default function InputForm({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Arrival Input */}
           <div className="bg-slate-50/50 dark:bg-slate-800/30 p-6 rounded-4xl border border-slate-200/50 dark:border-slate-700/50">
-            <p className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-4 uppercase tracking-wider">Arrival Input</p>
+            <p className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-4 uppercase tracking-wider">Inter-Arrival Input</p>
             <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-200/50 dark:bg-slate-900/50 rounded-2xl">
-                <button
-                  type="button"
-                  onClick={() => onArrivalInputTypeChange('rate')}
-                  disabled={isLoading || forceArrivalInputType === 'meanInterArrival'}
-                  className={`py-2 rounded-xl text-xs font-bold transition-all ${
-                    arrivalInputType === 'rate'
-                      ? 'bg-brand-500 text-white shadow-md'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
-                  } disabled:opacity-40 disabled:cursor-not-allowed`}
-                >
-                  Rate (λ)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onArrivalInputTypeChange('meanInterArrival')}
-                  disabled={isLoading || forceArrivalInputType === 'rate'}
-                  className={`py-2 rounded-xl text-xs font-bold transition-all ${
-                    arrivalInputType === 'meanInterArrival'
-                      ? 'bg-brand-500 text-white shadow-md'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
-                  } disabled:opacity-40 disabled:cursor-not-allowed`}
-                >
-                  Mean Time
-                </button>
-              </div>
 
-              <div>
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    {arrivalInputType === 'rate' ? 'Rate Unit' : 'Time Unit'}
-                  </span>
-                  <select
-                    value={arrivalTimeUnit}
-                    onChange={(e) => onArrivalTimeUnitChange(e.target.value as TimeUnit)}
-                    className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold cursor-pointer outline-none"
-                    disabled={isLoading}
-                  >
-                    <option value="seconds">Seconds</option>
-                    <option value="minutes">Minutes</option>
-                    <option value="hours">Hours</option>
-                  </select>
-                </div>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={arrivalValue}
-                  onChange={(e) => onArrivalValueChange(e.target.value)}
-                  className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 
-                           bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-900 dark:text-white
-                           focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none
-                           transition-all shadow-sm hover:shadow-md disabled:opacity-50 text-lg font-semibold"
-                  placeholder={arrivalInputType === 'rate' ? 'Rate (e.g. 0.8)' : 'Time (e.g. 1.25)'}
-                  disabled={isLoading}
-                  required
-                />
-              </div>
-
-              {/* G/G/1 arrival spread */}
+              {/* Spread / MinMax toggle for G/G */}
               {isGgModel && (
-                <div className="animate-slideUp pt-1 flex flex-col gap-3">
-                  {/* toggle only in manual mode */}
-                  {!arrIsUniform && (
-                    <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200/50 dark:bg-slate-900/50 rounded-xl">
-                      <button type="button" onClick={() => onArrivalInputModeChange('meanSpread')} disabled={isLoading}
-                        className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ arrivalInputMode === 'meanSpread' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
-                        Spread
-                      </button>
-                      <button type="button" onClick={() => onArrivalInputModeChange('minMax')} disabled={isLoading}
-                        className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ arrivalInputMode === 'minMax' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
-                        Min / Max
-                      </button>
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200/50 dark:bg-slate-900/50 rounded-xl">
+                  <button type="button" onClick={() => onArrivalInputModeChange('meanSpread')} disabled={isLoading}
+                    className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ arrivalInputMode === 'meanSpread' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
+                    Spread (Mean/Rate & Var)
+                  </button>
+                  <button type="button" onClick={() => onArrivalInputModeChange('minMax')} disabled={isLoading}
+                    className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ arrivalInputMode === 'minMax' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
+                    Min / Max
+                  </button>
+                </div>
+              )}
+
+              {(isGgModel && effArrMode === 'minMax') ? (
+                <div className="animate-slideUp flex flex-col gap-4">
+                  <div className="bg-brand-50 dark:bg-brand-900/10 border border-brand-200 dark:border-brand-800/30 p-3 rounded-xl">
+                    <p className="text-xs font-semibold text-brand-600 dark:text-brand-400">
+                      When using Min/Max, mean and variance are calculated automatically (assuming a uniform spread).
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Inter-arrival Min / Max</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="number" step="0.01" min="0.01" 
+                        value={arrivalMinTime} 
+                        onChange={(e) => onArrivalMinTimeChange(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
+                        placeholder="Min (e.g. 0.5)" disabled={isLoading} required />
+                      <input type="number" step="0.01" min="0.01" 
+                        value={arrivalMaxTime} 
+                        onChange={(e) => onArrivalMaxTimeChange(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
+                        placeholder="Max (e.g. 2.0)" disabled={isLoading} required />
                     </div>
-                  )}
-                  {effArrMode === 'minMax' ? (
-                    <div className="flex flex-col gap-2">
-                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Inter-arrival Min / Max</span>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input type="number" step="0.01" min="0.01" value={arrivalMinTime} onChange={(e) => onArrivalMinTimeChange(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
-                          placeholder="Min (e.g. 0.5)" disabled={isLoading} required />
-                        <input type="number" step="0.01" min="0.01" value={arrivalMaxTime} onChange={(e) => onArrivalMaxTimeChange(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
-                          placeholder="Max (e.g. 2.0)" disabled={isLoading} required />
-                      </div>
+                  </div>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Time Unit
+                    </span>
+                    <select
+                      value={arrivalTimeUnit}
+                      onChange={(e) => onArrivalTimeUnitChange(e.target.value as TimeUnit)}
+                      className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold cursor-pointer outline-none"
+                      disabled={isLoading}
+                    >
+                      <option value="seconds">Seconds</option>
+                      <option value="minutes">Minutes</option>
+                      <option value="hours">Hours</option>
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <div className="animate-slideUp flex flex-col gap-4">
+                  <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-200/50 dark:bg-slate-900/50 rounded-2xl">
+                    <button
+                      type="button"
+                      onClick={() => onArrivalInputTypeChange('rate')}
+                      disabled={isLoading}
+                      className={`py-2 rounded-xl text-xs font-bold transition-all ${
+                        arrivalInputType === 'rate'
+                          ? 'bg-brand-500 text-white shadow-md'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
+                      } disabled:opacity-40 disabled:cursor-not-allowed`}
+                    >
+                      Rate (λ)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onArrivalInputTypeChange('meanInterArrival')}
+                      disabled={isLoading}
+                      className={`py-2 rounded-xl text-xs font-bold transition-all ${
+                        arrivalInputType === 'meanInterArrival'
+                          ? 'bg-brand-500 text-white shadow-md'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
+                      } disabled:opacity-40 disabled:cursor-not-allowed`}
+                    >
+                      Mean Time
+                    </button>
+                  </div>
+
+                  <div>
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        {arrivalInputType === 'rate' ? 'Rate Unit' : 'Time Unit'}
+                      </span>
+                      <select
+                        value={arrivalTimeUnit}
+                        onChange={(e) => onArrivalTimeUnitChange(e.target.value as TimeUnit)}
+                        className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold cursor-pointer outline-none"
+                        disabled={isLoading}
+                      >
+                        <option value="seconds">Seconds</option>
+                        <option value="minutes">Minutes</option>
+                        <option value="hours">Hours</option>
+                      </select>
                     </div>
-                  ) : (
-                    <div className="flex flex-col gap-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={arrivalValue}
+                      onChange={(e) => onArrivalValueChange(e.target.value)}
+                      className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 
+                               bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-900 dark:text-white
+                               focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none
+                               transition-all shadow-sm hover:shadow-md disabled:opacity-50 text-lg font-semibold"
+                      placeholder={arrivalInputType === 'rate' ? 'Rate (e.g. 0.8)' : 'Time (e.g. 1.25)'}
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+
+                  {/* Spread — for G/G models */}
+                  {isGgModel && (
+                    <div className="flex flex-col gap-2 pt-1">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Spread Type</span>
                         <select value={arrivalSpreadType} onChange={(e) => onArrivalSpreadTypeChange(e.target.value as 'variance' | 'stdDev')}
@@ -461,103 +518,137 @@ export default function InputForm({
             <p className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-4 uppercase tracking-wider">Service Input</p>
             <div className="flex flex-col gap-4">
 
-              {/* Rate (μ) | Mean Time — mirrors Arrival Input exactly */}
-              <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-200/50 dark:bg-slate-900/50 rounded-2xl">
-                <button
-                  type="button"
-                  onClick={() => onServiceInputTypeChange('rate')}
-                  disabled={isLoading}
-                  className={`py-2 rounded-xl text-xs font-bold transition-all ${
-                    serviceInputType === 'rate'
-                      ? 'bg-brand-500 text-white shadow-md'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
-                  } disabled:opacity-40 disabled:cursor-not-allowed`}
-                >
-                  Rate (μ)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onServiceInputTypeChange('mean')}
-                  disabled={isLoading}
-                  className={`py-2 rounded-xl text-xs font-bold transition-all ${
-                    serviceInputType === 'mean'
-                      ? 'bg-brand-500 text-white shadow-md'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
-                  } disabled:opacity-40 disabled:cursor-not-allowed`}
-                >
-                  Mean Time
-                </button>
-              </div>
-
-              <div>
-                <div className="mb-2 flex items-center justify-between gap-3">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    {serviceInputType === 'rate' ? 'Rate Unit' : 'Service Time Unit'}
-                  </span>
-                  <select
-                    value={serviceInputType === 'rate' ? serviceRateUnit : serviceTimeUnit}
-                    onChange={(e) =>
-                      serviceInputType === 'rate'
-                        ? onServiceRateUnitChange(e.target.value as TimeUnit)
-                        : onServiceTimeUnitChange(e.target.value as TimeUnit)
-                    }
-                    className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold cursor-pointer outline-none"
-                    disabled={isLoading}
-                  >
-                    <option value="seconds">Seconds</option>
-                    <option value="minutes">Minutes</option>
-                    <option value="hours">Hours</option>
-                  </select>
+              {/* Spread / MinMax toggle for M/G and G/G */}
+              {(isMgModel || isGgModel) && (
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200/50 dark:bg-slate-900/50 rounded-xl">
+                  <button type="button" onClick={() => {
+                      if (isMgModel) onServiceInputModeChange('meanSpread');
+                      if (isGgModel) onGgServiceInputModeChange('meanSpread');
+                    }} disabled={isLoading}
+                    className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ (isMgModel ? serviceInputMode : ggServiceInputMode) === 'meanSpread' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
+                    Spread (Mean/Rate & Var)
+                  </button>
+                  <button type="button" onClick={() => {
+                      if (isMgModel) onServiceInputModeChange('minMax');
+                      if (isGgModel) onGgServiceInputModeChange('minMax');
+                    }} disabled={isLoading}
+                    className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ (isMgModel ? serviceInputMode : ggServiceInputMode) === 'minMax' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
+                    Min / Max
+                  </button>
                 </div>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={serviceInputType === 'rate' ? serviceRateValue : serviceTime}
-                  onChange={(e) =>
-                    serviceInputType === 'rate'
-                      ? onServiceRateValueChange(e.target.value)
-                      : onServiceTimeChange(e.target.value)
-                  }
-                  className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700
-                           bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-900 dark:text-white
-                           focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none
-                           transition-all shadow-sm hover:shadow-md disabled:opacity-50 text-lg font-semibold"
-                  placeholder={serviceInputType === 'rate' ? 'Rate (e.g. 0.5)' : 'Mean time (e.g., 1.5)'}
-                  disabled={isLoading}
-                  required
-                />
-              </div>
+              )}
 
-              {/* Spread — for M/G models in Mean Time mode */}
-              {isMgModel && serviceInputType === 'mean' && (
-                <div className="animate-slideUp pt-1 flex flex-col gap-3">
-                  {!svcIsUniform && (
-                    <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200/50 dark:bg-slate-900/50 rounded-xl">
-                      <button type="button" onClick={() => onServiceInputModeChange('meanSpread')} disabled={isLoading}
-                        className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ serviceInputMode === 'meanSpread' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
-                        Spread
-                      </button>
-                      <button type="button" onClick={() => onServiceInputModeChange('minMax')} disabled={isLoading}
-                        className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ serviceInputMode === 'minMax' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
-                        Min / Max
-                      </button>
+              {((isMgModel && effMgSvcMode === 'minMax') || (isGgModel && effGgSvcMode === 'minMax')) ? (
+                <div className="animate-slideUp flex flex-col gap-4">
+                  <div className="bg-brand-50 dark:bg-brand-900/10 border border-brand-200 dark:border-brand-800/30 p-3 rounded-xl">
+                    <p className="text-xs font-semibold text-brand-600 dark:text-brand-400">
+                      When using Min/Max, mean and variance are calculated automatically (assuming a uniform spread).
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Service Min / Max</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input type="number" step="0.01" min="0.01" 
+                        value={isMgModel ? serviceMinTime : ggServiceMinTime} 
+                        onChange={(e) => isMgModel ? onServiceMinTimeChange(e.target.value) : onGgServiceMinTimeChange(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
+                        placeholder="Min (e.g. 0.5)" disabled={isLoading} required />
+                      <input type="number" step="0.01" min="0.01" 
+                        value={isMgModel ? serviceMaxTime : ggServiceMaxTime} 
+                        onChange={(e) => isMgModel ? onServiceMaxTimeChange(e.target.value) : onGgServiceMaxTimeChange(e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
+                        placeholder="Max (e.g. 2.0)" disabled={isLoading} required />
                     </div>
-                  )}
-                  {effMgSvcMode === 'minMax' ? (
-                    <div className="flex flex-col gap-2">
-                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Service Min / Max</span>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input type="number" step="0.01" min="0.01" value={serviceMinTime} onChange={(e) => onServiceMinTimeChange(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
-                          placeholder="Min (e.g. 0.5)" disabled={isLoading} required />
-                        <input type="number" step="0.01" min="0.01" value={serviceMaxTime} onChange={(e) => onServiceMaxTimeChange(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
-                          placeholder="Max (e.g. 2.0)" disabled={isLoading} required />
-                      </div>
+                  </div>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Time Unit
+                    </span>
+                    <select
+                      value={serviceTimeUnit}
+                      onChange={(e) => onServiceTimeUnitChange(e.target.value as TimeUnit)}
+                      className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold cursor-pointer outline-none"
+                      disabled={isLoading}
+                    >
+                      <option value="seconds">Seconds</option>
+                      <option value="minutes">Minutes</option>
+                      <option value="hours">Hours</option>
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <div className="animate-slideUp flex flex-col gap-4">
+                  {/* Rate (μ) | Mean Time */}
+                  <div className="grid grid-cols-2 gap-2 p-1.5 bg-slate-200/50 dark:bg-slate-900/50 rounded-2xl">
+                    <button
+                      type="button"
+                      onClick={() => onServiceInputTypeChange('rate')}
+                      disabled={isLoading}
+                      className={`py-2 rounded-xl text-xs font-bold transition-all ${
+                        serviceInputType === 'rate'
+                          ? 'bg-brand-500 text-white shadow-md'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
+                      } disabled:opacity-40 disabled:cursor-not-allowed`}
+                    >
+                      Rate (μ)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onServiceInputTypeChange('mean')}
+                      disabled={isLoading}
+                      className={`py-2 rounded-xl text-xs font-bold transition-all ${
+                        serviceInputType === 'mean'
+                          ? 'bg-brand-500 text-white shadow-md'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50'
+                      } disabled:opacity-40 disabled:cursor-not-allowed`}
+                    >
+                      Mean Time
+                    </button>
+                  </div>
+
+                  <div>
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        {serviceInputType === 'rate' ? 'Rate Unit' : 'Service Time Unit'}
+                      </span>
+                      <select
+                        value={serviceInputType === 'rate' ? serviceRateUnit : serviceTimeUnit}
+                        onChange={(e) =>
+                          serviceInputType === 'rate'
+                            ? onServiceRateUnitChange(e.target.value as TimeUnit)
+                            : onServiceTimeUnitChange(e.target.value as TimeUnit)
+                        }
+                        className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold cursor-pointer outline-none"
+                        disabled={isLoading}
+                      >
+                        <option value="seconds">Seconds</option>
+                        <option value="minutes">Minutes</option>
+                        <option value="hours">Hours</option>
+                      </select>
                     </div>
-                  ) : (
-                    <div className="flex flex-col gap-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={serviceInputType === 'rate' ? serviceRateValue : serviceTime}
+                      onChange={(e) =>
+                        serviceInputType === 'rate'
+                          ? onServiceRateValueChange(e.target.value)
+                          : onServiceTimeChange(e.target.value)
+                      }
+                      className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700
+                               bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-slate-900 dark:text-white
+                               focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none
+                               transition-all shadow-sm hover:shadow-md disabled:opacity-50 text-lg font-semibold"
+                      placeholder={serviceInputType === 'rate' ? 'Rate (e.g. 0.5)' : 'Mean time (e.g., 1.5)'}
+                      disabled={isLoading}
+                      required
+                    />
+                  </div>
+
+                  {/* Spread — for M/G models */}
+                  {isMgModel && (
+                    <div className="flex flex-col gap-2 pt-1">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Spread Type</span>
                         <select value={serviceSpreadType} onChange={(e) => onServiceSpreadTypeChange(e.target.value as 'variance' | 'stdDev')}
@@ -572,38 +663,10 @@ export default function InputForm({
                         disabled={isLoading} required />
                     </div>
                   )}
-                </div>
-              )}
 
-              {/* G/G/1 service spread */}
-              {isGgModel && serviceInputType === 'mean' && (
-                <div className="animate-slideUp pt-1 flex flex-col gap-3">
-                  {!svcIsUniform && (
-                    <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200/50 dark:bg-slate-900/50 rounded-xl">
-                      <button type="button" onClick={() => onGgServiceInputModeChange('meanSpread')} disabled={isLoading}
-                        className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ ggServiceInputMode === 'meanSpread' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
-                        Spread
-                      </button>
-                      <button type="button" onClick={() => onGgServiceInputModeChange('minMax')} disabled={isLoading}
-                        className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ ggServiceInputMode === 'minMax' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
-                        Min / Max
-                      </button>
-                    </div>
-                  )}
-                  {effGgSvcMode === 'minMax' ? (
-                    <div className="flex flex-col gap-2">
-                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Service Min / Max</span>
-                      <div className="grid grid-cols-2 gap-2">
-                        <input type="number" step="0.01" min="0.01" value={ggServiceMinTime} onChange={(e) => onGgServiceMinTimeChange(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
-                          placeholder="Min (e.g. 0.5)" disabled={isLoading} required />
-                        <input type="number" step="0.01" min="0.01" value={ggServiceMaxTime} onChange={(e) => onGgServiceMaxTimeChange(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
-                          placeholder="Max (e.g. 2.0)" disabled={isLoading} required />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-2">
+                  {/* Spread — for G/G models */}
+                  {isGgModel && (
+                    <div className="flex flex-col gap-2 pt-1">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Spread Type</span>
                         <select value={ggServiceSpreadType} onChange={(e) => onGgServiceSpreadTypeChange(e.target.value as 'variance' | 'stdDev')}
@@ -618,6 +681,7 @@ export default function InputForm({
                         disabled={isLoading} required />
                     </div>
                   )}
+
                 </div>
               )}
             </div>
