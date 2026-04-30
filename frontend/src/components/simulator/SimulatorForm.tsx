@@ -195,6 +195,8 @@ export default function SimulatorForm({
                            transition-all duration-200 disabled:opacity-50"
               />
             </div>
+          </div>
+
         </div>
 
         <button
