@@ -25,4 +25,10 @@ public class SimulationTraceRequest
 
     [Range(1, int.MaxValue, ErrorMessage = "Number of servers must be at least 1")]
     public int Servers { get; set; } = 1;
+
+    public string? Distribution { get; set; }
+    public double? Min { get; set; }
+    public double? Max { get; set; }
+    public double? Variance { get; set; }
+    public double? StdDev { get; set; }
 }

@@ -7,6 +7,11 @@ export interface SimulateRequest {
   seed?: number;
   model?: string;
   servers?: number;
+  distribution?: string;
+  min?: number;
+  max?: number;
+  variance?: number;
+  stdDev?: number;
 }
 
 export interface CdfRow {

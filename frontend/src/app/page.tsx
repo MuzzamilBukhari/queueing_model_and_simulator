@@ -189,6 +189,13 @@ export default function Home() {
     mu: number;
     numCustomers: number;
     seed?: number;
+    model?: string;
+    servers?: number;
+    distribution?: string;
+    min?: number;
+    max?: number;
+    variance?: number;
+    stdDev?: number;
   }) => {
     setSimLoading(true);
     setSimLambda(payload.lambda);
