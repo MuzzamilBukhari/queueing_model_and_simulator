@@ -4,7 +4,6 @@ import { useState, FormEvent } from "react";
 import { Toaster, toast } from "react-hot-toast";
 import { Menu, Settings, X } from "lucide-react";
 import Sidebar, { AppTab } from "@/components/Sidebar";
-import MathEnginePanel from "@/components/mathEngine/MathEnginePanel";
 import InputForm from "@/components/InputForm";
 import ResultsPanel, { SimulationResults } from "@/components/ResultsPanel";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -636,9 +635,7 @@ export default function Home() {
                   ? "Overview"
                   : activeTab === "models"
                     ? "Queueing Models"
-                    : activeTab === "simulator"
-                      ? "Simulator"
-                      : "Math Engine"}
+                    : "Simulator"}
               </h1>
             </div>
             <ThemeToggle />
@@ -725,10 +722,6 @@ export default function Home() {
                   ))}
                 </div>
               </div>
-            </div>
-          ) : activeTab === "mathengine" ? (
-            <div className="max-w-[1400px] mx-auto -m-4 sm:-m-6 lg:-m-8">
-              <MathEnginePanel />
             </div>
           ) : activeTab === "models" ? (
             <div className="max-w-4xl mx-auto space-y-6">

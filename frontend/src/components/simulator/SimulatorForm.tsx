@@ -25,19 +25,35 @@ export default function SimulatorForm({
   const [arrivalValue, setArrivalValue] = useState("2.65");
   const [serviceInputType, setServiceInputType] = useState<"rate" | "mean">("mean");
   const [serviceValue, setServiceValue] = useState("7.45");
+  const [numCustomers, setNumCustomers] = useState(0);
+
+  type TimeUnit = "seconds" | "minutes" | "hours";
+  const [arrivalTimeUnit, setArrivalTimeUnit] = useState<TimeUnit>("minutes");
+  const [serviceTimeUnit, setServiceTimeUnit] = useState<TimeUnit>("minutes");
+
+  const minutesPerUnit: Record<TimeUnit, number> = {
+    seconds: 1 / 60,
+    minutes: 1,
+    hours: 60,
+  };
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const parsedArrival = parseFloat(arrivalValue);
     const parsedService = parseFloat(serviceValue);
-    const parsedN = 8; // Default hardcoded since input is removed
+    const parsedN = numCustomers;
     const parsedSeed = undefined;
 
     if (isNaN(parsedArrival) || parsedArrival <= 0) return;
     if (isNaN(parsedService) || parsedService <= 0) return;
 
-    const finalLambda = arrivalInputType === "rate" ? parsedArrival : 1 / parsedArrival;
-    const finalMu = serviceInputType === "mean" ? parsedService : 1 / parsedService;
+    const finalLambda = arrivalInputType === "rate" 
+      ? 1 / (parsedArrival / minutesPerUnit[arrivalTimeUnit])
+      : parsedArrival * minutesPerUnit[arrivalTimeUnit];
+      
+    const finalMu = serviceInputType === "rate"
+      ? 1 / (parsedService / minutesPerUnit[serviceTimeUnit])
+      : parsedService * minutesPerUnit[serviceTimeUnit];
 
     onSubmit({
       lambda: finalLambda,
@@ -52,7 +68,8 @@ export default function SimulatorForm({
   const isValid =
     parseFloat(arrivalValue) > 0 &&
     parseFloat(serviceValue) > 0 &&
-    servers >= 1;
+    servers >= 1 &&
+    numCustomers >= 1;
 
   const isMultiServer = model === "M/M/s" || model === "M/G/s" || model === "G/G/s";
 
@@ -75,7 +92,7 @@ export default function SimulatorForm({
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          
+
           {/* Model Selection */}
           <div>
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
@@ -138,9 +155,9 @@ export default function SimulatorForm({
                 onChange={(e) => setArrivalInputType(e.target.value as "rate" | "mean")}
                 disabled={isLoading}
                 className="px-4 py-3 rounded-l-xl border border-r-0 border-slate-300 dark:border-slate-700
-                           bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300
-                           focus:ring-2 focus:ring-brand-500 focus:border-transparent focus:z-10
-                           transition-all duration-200 disabled:opacity-50 appearance-none font-medium text-sm"
+                           bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-brand-700 dark:text-brand-300
+                           focus:ring-2 focus:ring-brand-500 focus:border-transparent focus:z-10 relative
+                           transition-all duration-200 disabled:opacity-50 font-bold text-sm cursor-pointer"
               >
                 <option value="rate">Rate (λ)</option>
                 <option value="mean">Mean Time</option>
@@ -153,11 +170,24 @@ export default function SimulatorForm({
                 onChange={(e) => setArrivalValue(e.target.value)}
                 disabled={isLoading}
                 placeholder="e.g. 2.65"
-                className="flex-1 min-w-0 px-4 py-3 rounded-r-xl border border-slate-300 dark:border-slate-700
+                className="flex-1 min-w-0 px-4 py-3 border-y border-slate-300 dark:border-slate-700 border-x-0
                            bg-white dark:bg-slate-800 text-slate-900 dark:text-white
-                           focus:ring-2 focus:ring-brand-500 focus:border-transparent
+                           focus:ring-2 focus:ring-brand-500 focus:border-transparent relative z-0
                            transition-all duration-200 disabled:opacity-50"
               />
+              <select
+                value={arrivalTimeUnit}
+                onChange={(e) => setArrivalTimeUnit(e.target.value as TimeUnit)}
+                disabled={isLoading}
+                className="px-4 py-3 rounded-r-xl border border-slate-300 dark:border-slate-700
+                           bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-brand-700 dark:text-brand-300
+                           focus:ring-2 focus:ring-brand-500 focus:border-transparent focus:z-10 relative
+                           transition-all duration-200 disabled:opacity-50 font-bold text-sm cursor-pointer"
+              >
+                <option value="seconds">{arrivalInputType === 'rate' ? '/ sec' : 'sec'}</option>
+                <option value="minutes">{arrivalInputType === 'rate' ? '/ min' : 'min'}</option>
+                <option value="hours">{arrivalInputType === 'rate' ? '/ hr' : 'hr'}</option>
+              </select>
             </div>
           </div>
 
@@ -174,9 +204,9 @@ export default function SimulatorForm({
                 onChange={(e) => setServiceInputType(e.target.value as "rate" | "mean")}
                 disabled={isLoading}
                 className="px-4 py-3 rounded-l-xl border border-r-0 border-slate-300 dark:border-slate-700
-                           bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300
-                           focus:ring-2 focus:ring-brand-500 focus:border-transparent focus:z-10
-                           transition-all duration-200 disabled:opacity-50 appearance-none font-medium text-sm"
+                           bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-brand-700 dark:text-brand-300
+                           focus:ring-2 focus:ring-brand-500 focus:border-transparent focus:z-10 relative
+                           transition-all duration-200 disabled:opacity-50 font-bold text-sm cursor-pointer"
               >
                 <option value="rate">Rate (μ)</option>
                 <option value="mean">Mean Time</option>
@@ -189,12 +219,44 @@ export default function SimulatorForm({
                 onChange={(e) => setServiceValue(e.target.value)}
                 disabled={isLoading}
                 placeholder="e.g. 7.45"
-                className="flex-1 min-w-0 px-4 py-3 rounded-r-xl border border-slate-300 dark:border-slate-700
+                className="flex-1 min-w-0 px-4 py-3 border-y border-slate-300 dark:border-slate-700 border-x-0
                            bg-white dark:bg-slate-800 text-slate-900 dark:text-white
-                           focus:ring-2 focus:ring-brand-500 focus:border-transparent
+                           focus:ring-2 focus:ring-brand-500 focus:border-transparent relative z-0
                            transition-all duration-200 disabled:opacity-50"
               />
+              <select
+                value={serviceTimeUnit}
+                onChange={(e) => setServiceTimeUnit(e.target.value as TimeUnit)}
+                disabled={isLoading}
+                className="px-4 py-3 rounded-r-xl border border-slate-300 dark:border-slate-700
+                           bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-brand-700 dark:text-brand-300
+                           focus:ring-2 focus:ring-brand-500 focus:border-transparent focus:z-10 relative
+                           transition-all duration-200 disabled:opacity-50 font-bold text-sm cursor-pointer"
+              >
+                <option value="seconds">{serviceInputType === 'rate' ? '/ sec' : 'sec'}</option>
+                <option value="minutes">{serviceInputType === 'rate' ? '/ min' : 'min'}</option>
+                <option value="hours">{serviceInputType === 'rate' ? '/ hr' : 'hr'}</option>
+              </select>
             </div>
+          </div>
+
+          {/* Number of Customers */}
+          <div>
+            <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
+              Number of Customers
+            </label>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={numCustomers}
+              onChange={(e) => setNumCustomers(parseInt(e.target.value) || 1)}
+              disabled={isLoading}
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700
+                         bg-white dark:bg-slate-800 text-slate-900 dark:text-white
+                         focus:ring-2 focus:ring-brand-500 focus:border-transparent
+                         transition-all duration-200 disabled:opacity-50"
+            />
           </div>
 
         </div>

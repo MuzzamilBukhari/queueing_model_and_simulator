@@ -402,12 +402,12 @@ export default function InputForm({
                   <div className="flex flex-col gap-2">
                     <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Inter-arrival Min / Max</span>
                     <div className="grid grid-cols-2 gap-2">
-                      <input type="number" step="0.01" min="0.01" 
+                      <input type="number" step="any" min="0.01" 
                         value={arrivalMinTime} 
                         onChange={(e) => onArrivalMinTimeChange(e.target.value)}
                         className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
                         placeholder="Min (e.g. 0.5)" disabled={isLoading} required />
-                      <input type="number" step="0.01" min="0.01" 
+                      <input type="number" step="any" min="0.01" 
                         value={arrivalMaxTime} 
                         onChange={(e) => onArrivalMaxTimeChange(e.target.value)}
                         className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
@@ -477,7 +477,7 @@ export default function InputForm({
                     </div>
                     <input
                       type="number"
-                      step="0.01"
+                      step="any"
                       min="0.01"
                       value={arrivalValue}
                       onChange={(e) => onArrivalValueChange(e.target.value)}
@@ -502,7 +502,7 @@ export default function InputForm({
                           <option value="stdDev">Standard Dev</option>
                         </select>
                       </div>
-                      <input type="number" step="0.01" min="0" value={arrivalSpreadValue} onChange={(e) => onArrivalSpreadValueChange(e.target.value)}
+                      <input type="number" step="any" min="0" value={arrivalSpreadValue} onChange={(e) => onArrivalSpreadValueChange(e.target.value)}
                         className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-lg font-semibold"
                         placeholder={arrivalSpreadType === 'variance' ? 'Variance (e.g. 1.44)' : 'Std Dev (e.g. 1.2)'}
                         disabled={isLoading} required />
@@ -548,12 +548,12 @@ export default function InputForm({
                   <div className="flex flex-col gap-2">
                     <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Service Min / Max</span>
                     <div className="grid grid-cols-2 gap-2">
-                      <input type="number" step="0.01" min="0.01" 
+                      <input type="number" step="any" min="0.01" 
                         value={isMgModel ? serviceMinTime : ggServiceMinTime} 
                         onChange={(e) => isMgModel ? onServiceMinTimeChange(e.target.value) : onGgServiceMinTimeChange(e.target.value)}
                         className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
                         placeholder="Min (e.g. 0.5)" disabled={isLoading} required />
-                      <input type="number" step="0.01" min="0.01" 
+                      <input type="number" step="any" min="0.01" 
                         value={isMgModel ? serviceMaxTime : ggServiceMaxTime} 
                         onChange={(e) => isMgModel ? onServiceMaxTimeChange(e.target.value) : onGgServiceMaxTimeChange(e.target.value)}
                         className="w-full px-4 py-3 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-base font-semibold"
@@ -628,7 +628,7 @@ export default function InputForm({
                     </div>
                     <input
                       type="number"
-                      step="0.01"
+                      step="any"
                       min="0.01"
                       value={serviceInputType === 'rate' ? serviceRateValue : serviceTime}
                       onChange={(e) =>
@@ -657,7 +657,7 @@ export default function InputForm({
                           <option value="stdDev">Standard Dev</option>
                         </select>
                       </div>
-                      <input type="number" step="0.01" min="0" value={serviceSpreadValue} onChange={(e) => onServiceSpreadValueChange(e.target.value)}
+                      <input type="number" step="any" min="0" value={serviceSpreadValue} onChange={(e) => onServiceSpreadValueChange(e.target.value)}
                         className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-lg font-semibold"
                         placeholder={serviceSpreadType === 'variance' ? 'Variance (e.g., 0.8)' : 'Std Dev (e.g., 0.9)'}
                         disabled={isLoading} required />
@@ -675,7 +675,7 @@ export default function InputForm({
                           <option value="stdDev">Standard Dev</option>
                         </select>
                       </div>
-                      <input type="number" step="0.01" min="0" value={ggServiceSpreadValue} onChange={(e) => onGgServiceSpreadValueChange(e.target.value)}
+                      <input type="number" step="any" min="0" value={ggServiceSpreadValue} onChange={(e) => onGgServiceSpreadValueChange(e.target.value)}
                         className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-lg font-semibold"
                         placeholder={ggServiceSpreadType === 'variance' ? 'Variance (e.g., 0.81)' : 'Std Dev (e.g., 0.9)'}
                         disabled={isLoading} required />
@@ -689,7 +689,7 @@ export default function InputForm({
         </div>
 
         {/* Server Settings (only for multi-server) */}
-        {(mode === 'auto' || servers > 1) && (
+        {(mode === 'auto' || manualServerMode === 'multi') && (
           <div className="bg-slate-50/50 dark:bg-slate-800/30 p-6 rounded-4xl border border-slate-200/50 dark:border-slate-700/50">
             <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-4 uppercase tracking-wider">
               Servers Configuration
@@ -697,8 +697,11 @@ export default function InputForm({
             <input
               type="number"
               min="1"
-              value={servers}
-              onChange={(e) => onServersChange(parseInt(e.target.value, 10) || 1)}
+              value={servers || ''}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                onServersChange(isNaN(val) ? 0 : val);
+              }}
               className="w-full px-5 py-4 rounded-xl border border-white dark:border-slate-700 bg-white/80 dark:bg-slate-900/80 text-slate-900 dark:text-white focus:ring-2 focus:ring-brand-500 outline-none transition-all shadow-sm text-2xl font-extrabold text-center font-mono tracking-widest"
               disabled={isLoading}
               required
@@ -726,7 +729,7 @@ export default function InputForm({
 
           {effectiveModel && (
             <div className="mb-6 px-6 py-2 rounded-full border border-brand-200 dark:border-brand-900/30 bg-brand-50 dark:bg-brand-900/10 backdrop-blur-sm text-sm font-bold text-brand-600 dark:text-brand-400 tracking-widest shadow-sm">
-              TARGET: {effectiveModel}
+              TARGET: {effectiveModel.replace('/s', `/${servers || 's'}`)}
             </div>
           )}
 

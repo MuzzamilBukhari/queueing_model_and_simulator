@@ -41,6 +41,12 @@ export default function RootLayout({
                   document.documentElement.classList.add('dark');
                 }
               })();
+
+              document.addEventListener('wheel', function() {
+                if (document.activeElement && document.activeElement.type === 'number') {
+                  document.activeElement.blur();
+                }
+              });
             `,
           }}
         />

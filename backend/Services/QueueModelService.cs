@@ -125,7 +125,7 @@ public class QueueModelService
         }
 
         var lq =
-            (Math.Pow(rho, 2) * (1 + csSquared) * (caSquared + Math.Pow(rho, 2) * csSquared)) /
+            (Math.Pow(rho, 2) * (caSquared + csSquared) * (caSquared + Math.Pow(rho, 2) * csSquared)) /
             denominator;
 
         if (double.IsNaN(lq) || double.IsInfinity(lq))

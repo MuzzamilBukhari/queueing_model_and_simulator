@@ -1,9 +1,9 @@
 "use client";
 
-import { Settings, BarChart3, Home as HomeIcon, Calculator } from 'lucide-react';
+import { Settings, BarChart3, Home as HomeIcon } from 'lucide-react';
 import Image from 'next/image';
 
-export type AppTab = 'home' | 'models' | 'simulator' | 'mathengine';
+export type AppTab = 'home' | 'models' | 'simulator';
 
 interface SidebarProps {
   activeTab: AppTab;
@@ -17,7 +17,6 @@ export default function Sidebar({ activeTab, onTabChange, isOpen, onClose }: Sid
     { id: 'home' as const, label: 'Home', icon: HomeIcon },
     { id: 'models' as const, label: 'Queueing Models', icon: BarChart3 },
     { id: 'simulator' as const, label: 'Simulator', icon: Settings },
-    { id: 'mathengine' as const, label: 'Math Engine', icon: Calculator },
   ];
 
   return (
