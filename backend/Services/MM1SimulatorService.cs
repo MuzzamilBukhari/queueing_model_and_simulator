@@ -121,6 +121,11 @@ public class MM1SimulatorService
         double avgTurnaround = customers.Average(c => c.TurnaroundTime);
         double serverUtilization = totalSimTime > 0 ? totalServiceTime / totalSimTime : 0;
 
+        // Time-average queue length (Lq) and number in system (L) via Little's-law form:
+        // Lq = sum(wait) / T, L = sum(turnaround) / T.
+        double avgQueueLength = totalSimTime > 0 ? customers.Sum(c => c.WaitTime) / totalSimTime : 0;
+        double avgNumberInSystem = totalSimTime > 0 ? customers.Sum(c => c.TurnaroundTime) / totalSimTime : 0;
+
         return new SimulationTraceResponse
         {
             CdfTable = cdfTable,
@@ -131,6 +136,8 @@ public class MM1SimulatorService
             AvgWaitTime = Math.Round(avgWait, 5),
             AvgResponseTime = Math.Round(avgResponse, 5),
             AvgTurnaroundTime = Math.Round(avgTurnaround, 5),
+            AvgQueueLength = Math.Round(avgQueueLength, 5),
+            AvgNumberInSystem = Math.Round(avgNumberInSystem, 5),
             ServerUtilization = Math.Round(serverUtilization, 5)
         };
     }
