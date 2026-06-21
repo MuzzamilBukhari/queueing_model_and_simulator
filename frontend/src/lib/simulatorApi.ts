@@ -47,6 +47,8 @@ export interface SimulateResponse {
   avgWaitTime: number;
   avgResponseTime: number;
   avgTurnaroundTime: number;
+  avgQueueLength: number;
+  avgNumberInSystem: number;
   serverUtilization: number;
 }
 

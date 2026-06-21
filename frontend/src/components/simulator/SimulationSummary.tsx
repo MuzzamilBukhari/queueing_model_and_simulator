@@ -7,6 +7,8 @@ import {
   RefreshCw,
   TrendingUp,
   Activity,
+  Users,
+  Layers,
 } from "lucide-react";
 import { SimulateResponse } from "@/lib/simulatorApi";
 
@@ -50,6 +52,20 @@ export default function SimulationSummary({ results }: SimulationSummaryProps) {
       description: "Average total time in system (wait + service)",
       icon: Activity,
       color: "green",
+    },
+    {
+      title: "Avg Queue Length (Lq)",
+      value: `${results.avgQueueLength.toFixed(4)}`,
+      description: "Average number of customers waiting in queue",
+      icon: Users,
+      color: "rose",
+    },
+    {
+      title: "Avg Number in System (L)",
+      value: `${results.avgNumberInSystem.toFixed(4)}`,
+      description: "Average number of customers in the system (queue + service)",
+      icon: Layers,
+      color: "blue",
     },
     {
       title: "Server Utilization (ρ)",

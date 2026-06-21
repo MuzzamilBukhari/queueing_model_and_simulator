@@ -42,7 +42,7 @@ export default function GanttChart({ segments }: GanttChartProps) {
           Gantt Chart
         </span>
         <span className="text-xs text-slate-400 dark:text-slate-500 font-medium">
-          — total time: {totalTime} min
+          — total simulation time: {totalTime} min
         </span>
       </div>
 
@@ -98,11 +98,9 @@ export default function GanttChart({ segments }: GanttChartProps) {
                       }}
                       title={`C${seg.customerNo}: ${seg.start}–${seg.end} min (${seg.duration} min service)`}
                     >
-                      {widthPct > 5 && (
-                        <span className="text-white text-[10px] font-bold px-1 truncate">
-                          {seg.duration}m
-                        </span>
-                      )}
+                      <span className="text-white text-[10px] font-bold px-1 whitespace-nowrap">
+                        {seg.duration}m
+                      </span>
                     </div>
                   </div>
 

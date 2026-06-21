@@ -65,6 +65,16 @@ public class SimulationTraceResponse
     public double AvgTurnaroundTime { get; set; }
 
     /// <summary>
+    /// Average queue length (Lq) = total customer wait time / total simulation time.
+    /// </summary>
+    public double AvgQueueLength { get; set; }
+
+    /// <summary>
+    /// Average number in system (L) = total time-in-system / total simulation time.
+    /// </summary>
+    public double AvgNumberInSystem { get; set; }
+
+    /// <summary>
     /// Server utilization = total busy time / total simulation time.
     /// </summary>
     public double ServerUtilization { get; set; }
