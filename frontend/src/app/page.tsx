@@ -50,7 +50,7 @@ function detectModel(
   const service = serviceDistribution === "Exponential" ? "M" : "G";
 
   if (servers > 1) {
-    return arrival === "M" && service === "M" ? "M/M/s" : "";
+    return `${arrival}/${service}/s`;
   }
 
   return `${arrival}/${service}/1`;

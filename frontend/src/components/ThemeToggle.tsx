@@ -52,8 +52,8 @@ export default function ThemeToggle() {
       aria-label="Toggle theme"
     >
       <div className="relative w-5 h-5 flex items-center justify-center">
-        <Sun className={`absolute w-5 h-5 text-amber-500 transition-all duration-500 transform ${isDark ? 'rotate-90 opacity-0 scale-50' : 'rotate-0 opacity-100 scale-100'}`} />
-        <Moon className={`absolute w-5 h-5 text-brand-300 transition-all duration-500 transform ${isDark ? 'rotate-0 opacity-100 scale-100' : '-rotate-90 opacity-0 scale-50'}`} />
+        <Sun className={`absolute w-5 h-5 text-amber-500 transition-all duration-500 transform ${isDark ? 'rotate-0 opacity-100 scale-100' : 'rotate-90 opacity-0 scale-50'}`} />
+        <Moon className={`absolute w-5 h-5 text-slate-500 dark:text-brand-300 transition-all duration-500 transform ${isDark ? '-rotate-90 opacity-0 scale-50' : 'rotate-0 opacity-100 scale-100'}`} />
       </div>
     </button>
   );

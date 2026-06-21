@@ -224,12 +224,7 @@ public class QueueModelService
 
         if (servers > 1)
         {
-            if (arrivalClass == "M" && serviceClass == "M")
-            {
-                return "M/M/S";
-            }
-
-            throw new ArgumentException("Only M/M/s is supported for multi-server mode.");
+            return $"{arrivalClass}/{serviceClass}/S";
         }
 
         return $"{arrivalClass}/{serviceClass}/1";
