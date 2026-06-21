@@ -131,8 +131,11 @@ export default function SimulatorForm({
                 type="number"
                 min="1"
                 step="1"
-                value={servers}
-                onChange={(e) => setServers(parseInt(e.target.value) || 1)}
+                value={servers || ''}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  setServers(isNaN(val) ? 0 : val);
+                }}
                 disabled={isLoading}
                 className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700
                            bg-white dark:bg-slate-800 text-slate-900 dark:text-white
@@ -249,8 +252,11 @@ export default function SimulatorForm({
               type="number"
               min="1"
               step="1"
-              value={numCustomers}
-              onChange={(e) => setNumCustomers(parseInt(e.target.value) || 1)}
+              value={numCustomers || ''}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                setNumCustomers(isNaN(val) ? 0 : val);
+              }}
               disabled={isLoading}
               className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700
                          bg-white dark:bg-slate-800 text-slate-900 dark:text-white
