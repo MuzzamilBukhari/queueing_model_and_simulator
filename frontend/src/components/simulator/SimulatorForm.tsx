@@ -113,11 +113,8 @@ export default function SimulatorForm({
                          transition-all duration-200 disabled:opacity-50 appearance-none"
             >
               <option value="M/M/1">M/M/1</option>
-              <option value="M/M/s">M/M/s</option>
               <option value="M/G/1">M/G/1</option>
-              <option value="M/G/s">M/G/s</option>
               <option value="G/G/1">G/G/1</option>
-              <option value="G/G/s">G/G/s</option>
             </select>
           </div>
 
