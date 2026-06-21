@@ -145,10 +145,17 @@ export default function InputForm({
   const arrIsUniform = mode === 'auto' && arrivalDistribution === 'Uniform';
   const svcIsUniform = mode === 'auto' && serviceDistribution === 'Uniform';
   
-  // Use the manual toggle state for all modes
-  const effMgSvcMode = serviceInputMode;
-  const effArrMode = arrivalInputMode;
-  const effGgSvcMode = ggServiceInputMode;
+  const effMgSvcMode = mode === 'auto' 
+    ? (svcIsUniform ? 'minMax' : (serviceDistribution === 'Normal' || serviceDistribution === 'Gamma' ? 'meanSpread' : serviceInputMode))
+    : serviceInputMode;
+    
+  const effArrMode = mode === 'auto'
+    ? (arrIsUniform ? 'minMax' : (arrivalDistribution === 'Normal' || arrivalDistribution === 'Gamma' ? 'meanSpread' : arrivalInputMode))
+    : arrivalInputMode;
+    
+  const effGgSvcMode = mode === 'auto'
+    ? (svcIsUniform ? 'minMax' : (serviceDistribution === 'Normal' || serviceDistribution === 'Gamma' ? 'meanSpread' : ggServiceInputMode))
+    : ggServiceInputMode;
 
   const mgSpreadValid = isMgModel
     ? (effMgSvcMode === 'minMax'
@@ -379,7 +386,7 @@ export default function InputForm({
             <div className="flex flex-col gap-4">
 
               {/* Spread / MinMax toggle for G/G */}
-              {isGgModel && (
+              {isGgModel && mode === 'manual' && (
                 <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200/50 dark:bg-slate-900/50 rounded-xl">
                   <button type="button" onClick={() => onArrivalInputModeChange('meanSpread')} disabled={isLoading}
                     className={`py-1.5 rounded-lg text-xs font-bold transition-all ${ arrivalInputMode === 'meanSpread' ? 'bg-brand-500 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50' } disabled:opacity-40`}>
@@ -519,7 +526,7 @@ export default function InputForm({
             <div className="flex flex-col gap-4">
 
               {/* Spread / MinMax toggle for M/G and G/G */}
-              {(isMgModel || isGgModel) && (
+              {(isMgModel || isGgModel) && mode === 'manual' && (
                 <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200/50 dark:bg-slate-900/50 rounded-xl">
                   <button type="button" onClick={() => {
                       if (isMgModel) onServiceInputModeChange('meanSpread');

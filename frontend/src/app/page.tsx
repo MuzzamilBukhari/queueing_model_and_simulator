@@ -213,7 +213,13 @@ export default function Home() {
     }
 
     const arrIsUniform = mode === "auto" && arrivalDistribution === "Uniform";
-    const effArrMode = arrivalInputMode;
+    const svcIsUniform = mode === "auto" && serviceDistribution === "Uniform";
+    const arrIsNormalOrGamma = mode === "auto" && (arrivalDistribution === "Normal" || arrivalDistribution === "Gamma");
+    const svcIsNormalOrGamma = mode === "auto" && (serviceDistribution === "Normal" || serviceDistribution === "Gamma");
+
+    const effArrMode = mode === "auto" ? (arrIsUniform ? "minMax" : (arrIsNormalOrGamma ? "meanSpread" : arrivalInputMode)) : arrivalInputMode;
+    const effMgSvcMode = mode === "auto" ? (svcIsUniform ? "minMax" : (svcIsNormalOrGamma ? "meanSpread" : serviceInputMode)) : serviceInputMode;
+    const effSvcMode = mode === "auto" ? (svcIsUniform ? "minMax" : (svcIsNormalOrGamma ? "meanSpread" : ggServiceInputMode)) : ggServiceInputMode;
 
     if (!effectiveModel.startsWith("G/G/") || effArrMode !== "minMax") {
       if (!arrivalValue) {
@@ -226,11 +232,11 @@ export default function Home() {
     const parsedServiceRate =
       serviceInputType === "rate" ? parseFloat(serviceRateValue) : undefined;
     const parsedServiceTime =
-      serviceInputMode === "meanSpread" ? parseFloat(serviceTime) : undefined;
+      effMgSvcMode === "meanSpread" ? parseFloat(serviceTime) : undefined;
     const parsedServiceMin =
-      serviceInputMode === "minMax" ? parseFloat(serviceMinTime) : undefined;
+      effMgSvcMode === "minMax" ? parseFloat(serviceMinTime) : undefined;
     const parsedServiceMax =
-      serviceInputMode === "minMax" ? parseFloat(serviceMaxTime) : undefined;
+      effMgSvcMode === "minMax" ? parseFloat(serviceMaxTime) : undefined;
 
     if (
       (!effectiveModel.startsWith("G/G/") || effArrMode !== "minMax") &&
@@ -256,11 +262,7 @@ export default function Home() {
       return;
     }
 
-    const isMgUniform =
-      effectiveModel.startsWith("M/G/") &&
-      mode === "auto" &&
-      serviceDistribution === "Uniform";
-    const effMgSvcMode = serviceInputMode;
+
 
     if (!effectiveModel.startsWith("G/G/")) {
       if (effectiveModel.startsWith("M/G/") && effMgSvcMode === "minMax") {
@@ -313,10 +315,6 @@ export default function Home() {
     }
 
     if (effectiveModel.startsWith("G/G/")) {
-      const arrIsUniform = mode === "auto" && arrivalDistribution === "Uniform";
-      const svcIsUniform = mode === "auto" && serviceDistribution === "Uniform";
-      const effArrMode = arrivalInputMode;
-      const effSvcMode = ggServiceInputMode;
       if (effArrMode === "minMax") {
         if (
           !arrivalMinTime ||
@@ -360,42 +358,23 @@ export default function Home() {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5196";
 
-      const isMgUniform =
-        effectiveModel.startsWith("M/G/") &&
-        mode === "auto" &&
-        serviceDistribution === "Uniform";
       // When rate (μ) is entered directly, convert to service time in minutes: 1 / (rate per minute)
       const normalizedServiceTime =
         serviceInputType === "rate" && parsedServiceRate
           ? 1 / convertRateToPerMinute(parsedServiceRate, serviceRateUnit)
-          : !isMgUniform &&
-              serviceInputMode === "meanSpread" &&
-              parsedServiceTime
+          : effMgSvcMode === "meanSpread" && parsedServiceTime
             ? convertDurationToMinutes(parsedServiceTime, serviceTimeUnit)
             : undefined;
       const normalizedServiceMin =
-        isMgUniform && serviceMinTime
-          ? convertDurationToMinutes(
-              parseFloat(serviceMinTime),
-              serviceTimeUnit,
-            )
-          : serviceInputMode === "minMax" && parsedServiceMin
-            ? convertDurationToMinutes(parsedServiceMin, serviceTimeUnit)
-            : undefined;
+        effMgSvcMode === "minMax" && parsedServiceMin
+          ? convertDurationToMinutes(parsedServiceMin, serviceTimeUnit)
+          : undefined;
       const normalizedServiceMax =
-        isMgUniform && serviceMaxTime
-          ? convertDurationToMinutes(
-              parseFloat(serviceMaxTime),
-              serviceTimeUnit,
-            )
-          : serviceInputMode === "minMax" && parsedServiceMax
-            ? convertDurationToMinutes(parsedServiceMax, serviceTimeUnit)
-            : undefined;
+        effMgSvcMode === "minMax" && parsedServiceMax
+          ? convertDurationToMinutes(parsedServiceMax, serviceTimeUnit)
+          : undefined;
       const spreadValue =
-        effectiveModel.startsWith("M/G/") &&
-        !isMgUniform &&
-        serviceInputMode === "meanSpread" &&
-        serviceSpreadValue
+        effectiveModel.startsWith("M/G/") && effMgSvcMode === "meanSpread" && serviceSpreadValue
           ? parseFloat(serviceSpreadValue)
           : undefined;
       const normalizedVariance =
@@ -411,12 +390,6 @@ export default function Home() {
       let computedCa: number | undefined;
       let computedCs: number | undefined;
       if (effectiveModel.startsWith("G/G/")) {
-        const arrIsUniform =
-          mode === "auto" && arrivalDistribution === "Uniform";
-        const svcIsUniform =
-          mode === "auto" && serviceDistribution === "Uniform";
-        const effArrMode = arrIsUniform ? "minMax" : arrivalInputMode;
-        const effSvcMode = svcIsUniform ? "minMax" : ggServiceInputMode;
         // Arrival Ca²
         if (effArrMode === "minMax") {
           const aMin = convertDurationToMinutes(
@@ -502,21 +475,21 @@ export default function Home() {
         arrivalDistribution: mode === "auto" ? arrivalDistribution : undefined,
         serviceDistribution: mode === "auto" ? serviceDistribution : undefined,
         serviceTime:
-          serviceInputMode === "meanSpread" ? normalizedServiceTime : undefined,
+          effMgSvcMode === "meanSpread" ? normalizedServiceTime : undefined,
         serviceMinTime:
-          serviceInputMode === "minMax" ? normalizedServiceMin : undefined,
+          effMgSvcMode === "minMax" ? normalizedServiceMin : undefined,
         serviceMaxTime:
-          serviceInputMode === "minMax" ? normalizedServiceMax : undefined,
+          effMgSvcMode === "minMax" ? normalizedServiceMax : undefined,
         servers,
         variance:
           effectiveModel.startsWith("M/G/") &&
-          serviceInputMode === "meanSpread" &&
+          effMgSvcMode === "meanSpread" &&
           serviceSpreadType === "variance"
             ? normalizedVariance
             : undefined,
         serviceStdDev:
           effectiveModel.startsWith("M/G/") &&
-          serviceInputMode === "meanSpread" &&
+          effMgSvcMode === "meanSpread" &&
           serviceSpreadType === "stdDev"
             ? normalizedStdDev
             : undefined,
@@ -546,7 +519,7 @@ export default function Home() {
         );
       }
 
-      if (effectiveModel.startsWith("G/G/") && effMgSvcMode === "minMax") {
+      if (effectiveModel.startsWith("G/G/") && effSvcMode === "minMax") {
         const sMin = convertDurationToMinutes(
           parseFloat(ggServiceMinTime),
           serviceTimeUnit,
