@@ -1,10 +1,11 @@
 "use client";
 
 import { ClipboardList } from "lucide-react";
-import { CustomerRecord } from "@/lib/simulatorApi";
+import { CustomerRecord, CdfRow } from "@/lib/simulatorApi";
 
 interface TraceTableProps {
   customers: CustomerRecord[];
+  cdfTable?: CdfRow[];
 }
 
 const th = "px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap text-right";
@@ -12,7 +13,10 @@ const thLeft = "px-3 py-3 text-xs font-bold uppercase tracking-wider text-slate-
 const td = "px-3 py-2.5 text-right font-mono text-sm text-slate-700 dark:text-slate-200 whitespace-nowrap";
 const tdLeft = "px-3 py-2.5 text-left font-semibold text-sm text-brand-600 dark:text-brand-400 whitespace-nowrap";
 
-export default function TraceTable({ customers }: TraceTableProps) {
+export default function TraceTable({ customers, cdfTable }: TraceTableProps) {
+  const rowCount = customers.length;
+  const rows = Array.from({ length: rowCount }, (_, i) => i);
+
   return (
     <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-2xl rounded-[2rem] border border-white/60 dark:border-slate-800/60 shadow-[0_4px_24px_rgba(0,0,0,0.04)] overflow-hidden">
       {/* Header */}
@@ -45,29 +49,33 @@ export default function TraceTable({ customers }: TraceTableProps) {
             </tr>
           </thead>
           <tbody>
-            {customers.map((c, idx) => (
-              <tr
-                key={c.no}
-                className={
-                  idx % 2 === 0
-                    ? "bg-white/40 dark:bg-slate-900/20 hover:bg-brand-50/30 dark:hover:bg-brand-900/10 transition-colors"
-                    : "bg-slate-50/40 dark:bg-slate-800/20 hover:bg-brand-50/30 dark:hover:bg-brand-900/10 transition-colors"
-                }
-              >
-                <td className={tdLeft}>C{c.no}</td>
-                <td className={td}>{c.cumulativeProbability.toFixed(5)}</td>
-                <td className={td}>{c.cumProbLookup.toFixed(5)}</td>
-                <td className={td}>{idx}</td>
-                <td className={`${td} font-semibold`}>{c.interArrival}</td>
-                <td className={td}>{c.arrivalTime}</td>
-                <td className={`${td} text-violet-600 dark:text-violet-400`}>{c.serviceTime}</td>
-                <td className={td}>{c.startTime}</td>
-                <td className={td}>{c.endTime}</td>
-                <td className={`${td} text-amber-600 dark:text-amber-400`}>{c.turnaroundTime}</td>
-                <td className={`${td} text-rose-600 dark:text-rose-400`}>{c.waitTime}</td>
-                <td className={`${td} text-indigo-600 dark:text-indigo-400`}>{c.responseTime}</td>
-              </tr>
-            ))}
+            {rows.map((idx) => {
+              const c = customers[idx];
+              const cdf = cdfTable?.[idx];
+              return (
+                <tr
+                  key={idx}
+                  className={
+                    idx % 2 === 0
+                      ? "bg-white/40 dark:bg-slate-900/20 hover:bg-brand-50/30 dark:hover:bg-brand-900/10 transition-colors"
+                      : "bg-slate-50/40 dark:bg-slate-800/20 hover:bg-brand-50/30 dark:hover:bg-brand-900/10 transition-colors"
+                  }
+                >
+                  <td className={tdLeft}>{idx + 1}</td>
+                  <td className={td}>{cdf ? cdf.cumulativeProbability.toFixed(5) : ""}</td>
+                  <td className={td}>{cdf ? (cdf.cumProbLookup === 0.00001 ? "0.00000" : cdf.cumProbLookup.toFixed(5)) : ""}</td>
+                  <td className={td}>{cdf ? cdf.k : ""}</td>
+                  <td className={`${td} font-semibold`}>{c ? c.interArrival : ""}</td>
+                  <td className={td}>{c ? c.arrivalTime : ""}</td>
+                  <td className={`${td} text-violet-600 dark:text-violet-400`}>{c ? c.serviceTime : ""}</td>
+                  <td className={td}>{c ? c.startTime : ""}</td>
+                  <td className={td}>{c ? c.endTime : ""}</td>
+                  <td className={`${td} text-amber-600 dark:text-amber-400`}>{c ? c.turnaroundTime : ""}</td>
+                  <td className={`${td} text-rose-600 dark:text-rose-400`}>{c ? c.waitTime : ""}</td>
+                  <td className={`${td} text-indigo-600 dark:text-indigo-400`}>{c ? c.responseTime : ""}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

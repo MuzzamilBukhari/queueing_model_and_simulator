@@ -58,7 +58,7 @@ export default function SimulatorForm({
     if (isNaN(parsedArrival) || parsedArrival <= 0) return;
 
     const finalLambda = arrivalInputType === "rate" 
-      ? 1 / (parsedArrival / minutesPerUnit[arrivalTimeUnit])
+      ? parsedArrival / minutesPerUnit[arrivalTimeUnit]
       : parsedArrival * minutesPerUnit[arrivalTimeUnit];
       
     let finalMu = 0;
