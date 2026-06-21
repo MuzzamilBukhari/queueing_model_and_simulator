@@ -27,9 +27,9 @@ export default function SimulatorForm({
   const [model, setModel] = useState("M/M/1");
   const [servers, setServers] = useState(1);
   const [arrivalInputType, setArrivalInputType] = useState<"rate" | "mean">("rate");
-  const [arrivalValue, setArrivalValue] = useState("2.65");
+  const [arrivalValue, setArrivalValue] = useState("");
   const [serviceInputType, setServiceInputType] = useState<"rate" | "mean">("mean");
-  const [serviceValue, setServiceValue] = useState("7.45");
+  const [serviceValue, setServiceValue] = useState("");
   const [numCustomers, setNumCustomers] = useState(0);
 
   // M/G/1 states
@@ -57,22 +57,22 @@ export default function SimulatorForm({
 
     if (isNaN(parsedArrival) || parsedArrival <= 0) return;
 
-    const finalLambda = arrivalInputType === "rate" 
+    const finalLambda = arrivalInputType === "rate"
       ? parsedArrival / minutesPerUnit[arrivalTimeUnit]
       : parsedArrival * minutesPerUnit[arrivalTimeUnit];
-      
+
     let finalMu = 0;
     if (model === "M/G/1" && distribution === "Uniform") {
       const parsedMin = parseFloat(serviceMin);
       const parsedMax = parseFloat(serviceMax);
       if (isNaN(parsedMin) || isNaN(parsedMax) || parsedMin <= 0 || parsedMax <= parsedMin) return;
-      
+
       const meanTimeInMins = ((parsedMin + parsedMax) / 2) * minutesPerUnit[serviceTimeUnit];
       finalMu = 1 / meanTimeInMins;
     } else {
       const parsedService = parseFloat(serviceValue);
       if (isNaN(parsedService) || parsedService <= 0) return;
-      
+
       finalMu = serviceInputType === "rate"
         ? 1 / (parsedService / minutesPerUnit[serviceTimeUnit])
         : parsedService * minutesPerUnit[serviceTimeUnit];
@@ -80,7 +80,7 @@ export default function SimulatorForm({
 
     const finalMin = (model === "M/G/1" && distribution === "Uniform") && serviceMin ? parseFloat(serviceMin) * minutesPerUnit[serviceTimeUnit] : undefined;
     const finalMax = (model === "M/G/1" && distribution === "Uniform") && serviceMax ? parseFloat(serviceMax) * minutesPerUnit[serviceTimeUnit] : undefined;
-    
+
     const finalVarOrSd = (model === "M/G/1" && distribution === "Normal") && varianceValue ? parseFloat(varianceValue) : undefined;
     const finalVariance = varianceType === "variance" && finalVarOrSd !== undefined ? finalVarOrSd * Math.pow(minutesPerUnit[serviceTimeUnit], 2) : undefined;
     const finalStdDev = varianceType === "stdDev" && finalVarOrSd !== undefined ? finalVarOrSd * minutesPerUnit[serviceTimeUnit] : undefined;

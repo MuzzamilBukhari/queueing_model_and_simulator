@@ -18,6 +18,8 @@ public class MM1SimulatorService
             throw new ArgumentException("Lambda must be greater than 0.");
         if (request.Mu <= 0)
             throw new ArgumentException("Mu must be greater than 0.");
+        if (request.Lambda >= request.Mu)
+            throw new ArgumentException("System unstable. Utilization (rho) must be less than 1.");
         if (request.NumCustomers < 1 || request.NumCustomers > 100)
             throw new ArgumentException("NumCustomers must be between 1 and 100.");
 
